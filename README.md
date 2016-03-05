@@ -6,6 +6,12 @@
 
 This library provides generalized folds, unfolds, and traversals for fixed point data. structures in Scala.
 
+## External Resources
+
+- [Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.125) – the iconic paper that collected a lot of this info for the first time
+- [Recursion Schemes: A Field Guide (Redux)](http://comonad.com/reader/2009/recursion-schemes/) – Ed Kmett’s summary (with links to Haskell code) of various folds and unfolds
+- [Unifying Structured Recursion Schemes](http://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/urs.pdf) – a newer paper on how to generalize recursion schemes
+
 ## Introduction
 
 This library is predicated on the idea of rewriting your recursive data structures as functors where the recursive component is replaced by a parameter.
