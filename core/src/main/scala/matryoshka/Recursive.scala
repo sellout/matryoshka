@@ -165,3 +165,15 @@ import simulacrum.typeclass
   def convertTo[F[_]: Functor, R[_[_]]: Corecursive](t: T[F]): R[F] =
     cata(t)(Corecursive[R].embed[F])
 }
+
+object Recursive {
+
+  object unapplyops {
+    implicit def toAllRecursiveOpsUnapply[A, B](target: A)(implicit U: Funapply[Recursive, A, B]): AllOps[U.M, U.F] = 
+      new AllOps[U.M, U.F] {
+        val self = U.leibniz(target)
+        val typeClassInstance = U.TC
+      }
+  }
+
+}

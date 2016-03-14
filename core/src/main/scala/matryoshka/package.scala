@@ -390,4 +390,9 @@ package object matryoshka
   implicit def ToCorecursiveOps[T[_[_]]: Corecursive, F[_]](f: F[T[F]]):
       CorecursiveOps[T, F] =
     new CorecursiveOps[T, F](f)
+
+  implicit def ToCorecursiveOpsUnapply[T[_[_]], F[_], TF](f: F[TF])(implicit U: Funapply[Corecursive, TF, F[TF]]):
+    CorecursiveOps[U.M, U.F] = 
+      new CorecursiveOps[U.M, U.F](U.leibnizF(f))(U.TC)
+
 }
