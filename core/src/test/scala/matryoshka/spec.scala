@@ -877,5 +877,29 @@ class FixplateSpecs extends Specification with ScalaCheck with ScalazMatchers {
     }
   }
 
+  "Funapply for CorecursiveOps" should {
+    "work for Mu" in {
+       List[Mu[List]]().embed
+       true
+    }
+    // stack overflow ... expected?
+    // "work for Nu" in {
+    //    List[Nu[List]]().embed
+    //    true
+    // }
+    "work for Fix" in {
+       List[Fix[List]]().embed
+       true
+    }
+    "work for Free" in {
+       List[Free[List, Int]]().embed
+       true
+    }
+    "work for Cofree" in {
+       List[Cofree[List, Int]]().embed
+       true
+    }
+  }
+
   def expGen = Gen.resize(100, arbFix(arbExp).arbitrary)
 }
