@@ -14,20 +14,10 @@
  * limitations under the License.
  */
 
-package matryoshka.data
+import simulacrum.typeclass
 
-import matryoshka._
-
-import scala.Option
-
-import scalaz._
-
-trait OptionInstances {
-  implicit def optionRecursive[A]: Recursive.Aux[Option[A], Const[Option[A], ?]] =
-    id.idRecursive[Option[A]]
-
-  implicit def optionCorecursive[A]: Corecursive.Aux[Option[A], Const[Option[A], ?]] =
-    id.idCorecursive[Option[A]]
+@typeclass trait Foo[A] {
+  def foo(a: A): A
 }
 
-object option extends OptionInstances
+package object implicits extends Foo.ToFooOps
