@@ -1,20 +1,23 @@
-<img align="right" src="resources/matryoshka.png" height="200px" style="padding-left: 20px"/>
+<img align="right" src="resources/turtles.png" height="200px" style="padding-left: 20px"/>
 
-# Matryoshka
+# Turtles
 
-Generalized folds, unfolds, and traversals for fixed point data structures in Scala.
+Generalized folds, unfolds, and traversals for fixed point data structures in Scala, using [Cats](https://github.com/typelevel/cats).
+
+Forked from the [Scalaz](https://github.com/scalaz/scalaz)-based [Matryoshka](https://github.com/slamdata/matryoshka).
 
 [![Typelevel incubator](https://img.shields.io/badge/typelevel-incubator-F51C2B.svg)](http://typelevel.org)
-[![Build Status](https://travis-ci.org/slamdata/matryoshka.svg?branch=master)](https://travis-ci.org/slamdata/matryoshka)
-[![codecov.io](https://codecov.io/github/slamdata/matryoshka/coverage.svg?branch=master)](https://codecov.io/github/slamdata/matryoshka?branch=master)
-[![Join the chat at https://gitter.im/slamdata/matryoshka](https://badges.gitter.im/slamdata/matryoshka.svg)](https://gitter.im/slamdata/matryoshka?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Latest version](https://index.scala-lang.org/slamdata/matryoshka/matryoshka-core/latest.svg?color=orange)](https://index.scala-lang.org/slamdata/matryoshka)
+[![Build Status](https://travis-ci.org/sellout/turtles.svg?branch=master)](https://travis-ci.org/sellout/turtles)
+[![codecov.io](https://codecov.io/github/sellout/turtles/coverage.svg?branch=master)](https://codecov.io/github/sellout/turtles?branch=master)
+[![Join the chat at https://gitter.im/sellout/turtles](https://badges.gitter.im/sellout/turtles.svg)](https://gitter.im/sellout/turtles?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Latest version](https://index.scala-lang.org/sellout/turtles/turtles-core/latest.svg?color=orange)](https://index.scala-lang.org/sellout/turtles)
+
 ## External Resources
 
 - [Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.125) – the iconic paper that collected a lot of this info for the first time
 - [Recursion Schemes: A Field Guide (Redux)](http://comonad.com/reader/2009/recursion-schemes/) – Ed Kmett’s summary of various folds and unfolds, with links to Haskell code
 - [Unifying Structured Recursion Schemes](http://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/urs.pdf) – a newer paper on how to generalize recursion schemes
-- [Efficient Nanopass Compilers using Cats and Matryoshka](https://github.com/sellout/recursion-scheme-talk/blob/master/nanopass-compiler-talk.org) – Greg Pfeil’s talk on this library (and some other things)
+- [Efficient Nanopass Compilers using Cats and Turtles](https://github.com/sellout/recursion-scheme-talk/blob/master/nanopass-compiler-talk.org) – Greg Pfeil’s talk on this library (and some other things)
 - [Fix Haskell (by eliminating recursion)](https://github.com/sellout/recursion-scheme-talk/blob/master/recursion-scheme-talk.org) – Greg Pfeil’s talk on recursion schemes in Haskell
 - Recursion schemes by example - Tim Williams [slides](https://github.com/willtim/recursion-schemes/raw/master/slides-final.pdf) [talk](https://www.youtube.com/watch?v=Zw9KeP3OzpU)
 - [Practical Recursion Schemes](https://jtobin.io/practical-recursion-schemes) - Jared Tobin
@@ -26,18 +29,18 @@ Generalized folds, unfolds, and traversals for fixed point data structures in Sc
 
 1. Add a dependency
  ```scala
-libraryDependencies += "com.slamdata" %% "matryoshka-core" % "0.18.3"
+libraryDependencies += "org.technomadic" %% "turtles-core" % "0.22.0"
 ```
-Optionally, you can also depend on `matryoshka-scalacheck` to get `Arbitrary`/`Cogen`/`Shrink` instances for a bunch of pattern functors and fixed points.
+Optionally, you can also depend on `turtles-scalacheck` to get `Arbitrary`/`Cogen`/`Shrink` instances for a bunch of pattern functors and fixed points.
 
 2. Apply some fix for SI-2712. Prior to 2.12, use @milessabin’s [compiler plugin](https://github.com/milessabin/si2712fix-plugin). As of 2.12, you can simply add `scalacOptions += "-Ypartial-unification"` to your build.sbt.
 
 3. Add imports as needed. Usually the following should suffice
 ```scala
-import matryoshka._
-import matryoshka.implicits._
+import turtles._
+import turtles.implicits._
 ```
-but if you need some of our pattern functors, then `matryoshka.patterns._` should be added. Also, there will be cases where you need to specify explicit types (although we generally recommend abstracting over `{Bir|Cor|R}ecursive` type classes), so you may need `matryoshka.data._` (for `Fix`, `Mu`, and `Nu`) and/or `matryoshka.instances.fixedpoint._` for things like `Nat`, `List`, `Cofree`, etc. defined in terms of `Mu`/`Nu`.
+but if you need some of our pattern functors, then `turtles.patterns._` should be added. Also, there will be cases where you need to specify explicit types (although we generally recommend abstracting over `{Bir|Cor|R}ecursive` type classes), so you may need `turtles.data._` (for `Fix`, `Mu`, and `Nu`) and/or `turtles.instances.fixedpoint._` for things like `Nat`, `List`, `Cofree`, etc. defined in terms of `Mu`/`Nu`.
 
 ## Introduction
 
@@ -103,7 +106,7 @@ def someExpr[T](implicit T: Corecursive.Aux[T, Expr]): T =
   Mul(Num[T](2).embed, Mul(Num[T](3).embed,
       Num[T](4).embed).embed).embed
 
-import matryoshka.data.Mu 
+import turtles.data.Mu
 
 someExpr[Mu[Expr]].cata(eval) // ⇒ 24
 ```
@@ -138,7 +141,7 @@ The tradeoff is that these operations can only transform between one fixed-point
 
 The names of these operations are the same as those in `Recursive` and `Corecursive`, but prefixed with `trans`.
 
-There is an additional (restricted) set of operations that also have a `T` suffix (e.g., `transCataT`). These only generalize in “the Elgot position” and require you to maintain the same functor. However, it can be the most natural way to write certain transformations, like `matryoshka.algebras.substitute`.
+There is an additional (restricted) set of operations that also have a `T` suffix (e.g., `transCataT`). These only generalize in “the Elgot position” and require you to maintain the same functor. However, it can be the most natural way to write certain transformations, like `turtles.algebras.substitute`.
 
 ### Generalization
 

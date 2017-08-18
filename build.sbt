@@ -12,7 +12,7 @@ lazy val standardSettings = commonBuildSettings ++ Seq(
   logBuffered in Test := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
   exportJars := true,
-  organization := "com.slamdata",
+  organization := "org.technomadic",
   ScoverageKeys.coverageHighlighting := true,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   wartremoverWarnings in (Compile, compile) --= Seq(
@@ -26,16 +26,16 @@ lazy val standardSettings = commonBuildSettings ++ Seq(
     CommonDependencies.simulacrum.simulacrum.cross(CrossVersion.binary) % "compile, test"))
 
 lazy val publishSettings = commonPublishSettings ++ Seq(
-  organizationName := "SlamData Inc.",
-  organizationHomepage := Some(url("http://slamdata.com")),
-  homepage := Some(url("https://github.com/slamdata/matryoshka")),
+  organizationName := "Greg Pfeil",
+  organizationHomepage := Some(url("http://technomadic.org")),
+  homepage := Some(url("https://github.com/sellout/turtles")),
   scmInfo := Some(
     ScmInfo(
-      url("https://github.com/slamdata/matryoshka"),
-      "scm:git@github.com:slamdata/matryoshka.git")))
+      url("https://github.com/sellout/turtles"),
+      "scm:git@github.com:sellout/turtles.git")))
 
 lazy val root = Project("root", file("."))
-  .settings(name := "matryoshka")
+  .settings(name := "turtles")
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(transferPublishAndTagResources)
   .settings(console := (console in replJVM).value)
@@ -46,13 +46,13 @@ lazy val root = Project("root", file("."))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val core = crossProject.in(file("core"))
-  .settings(name := "matryoshka-core")
+  .settings(name := "turtles-core")
   .settings(standardSettings ++ publishSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val scalacheck = crossProject
   .dependsOn(core)
-  .settings(name := "matryoshka-scalacheck")
+  .settings(name := "turtles-scalacheck")
   .settings(standardSettings ++ publishSettings: _*)
   .settings(libraryDependencies ++= Seq(
     // NB: Needs a version of Scalacheck with rickynils/scalacheck#301.
@@ -61,7 +61,7 @@ lazy val scalacheck = crossProject
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val tests = crossProject
-  .settings(name := "matryoshka-tests")
+  .settings(name := "turtles-tests")
   .dependsOn(core, scalacheck)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(libraryDependencies ++= Seq(
@@ -71,19 +71,19 @@ lazy val tests = crossProject
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val docs = project
-  .settings(name := "matryoshka-docs")
+  .settings(name := "turtles-docs")
   .dependsOn(coreJVM)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(tutScalacOptions --= Seq("-Yno-imports", "-Ywarn-unused-import"))
   .enablePlugins(MicrositesPlugin)
   .settings(
-    micrositeName             := "Matryoshka",
-    micrositeDescription      := "A library for doing bad-ass computer shit.",
-    micrositeAuthor           := "SlamData",
-    micrositeGithubOwner      := "slamdata",
-    micrositeGithubRepo       := "matryoshka",
-    micrositeBaseUrl          := "/matryoshka",
-    micrositeDocumentationUrl := "/matryoshka/docs/01-Index.html",
+    micrositeName             := "Turtles",
+    micrositeDescription      := "Generalized folds, unfolds, and traversals for fixed point data structures in Scala, using Cats.",
+    micrositeAuthor           := "Greg Pfeil",
+    micrositeGithubOwner      := "sellout",
+    micrositeGithubRepo       := "turtles",
+    micrositeBaseUrl          := "/turtles",
+    micrositeDocumentationUrl := "/turtles/docs/01-Index.html",
     micrositeHighlightTheme   := "color-brewer")
 
 /** A project just for the console.
@@ -93,10 +93,10 @@ lazy val repl = crossProject dependsOn (tests % "compile->test") settings standa
   console := (console in Test).value,
   scalacOptions --= Seq("-Yno-imports", "-Ywarn-unused-import"),
   initialCommands in console += """
-    |import matryoshka._
-    |import matryoshka.data._
-    |import matryoshka.implicits._
-    |import matryoshka.patterns._
+    |import turtles._
+    |import turtles.data._
+    |import turtles.implicits._
+    |import turtles.patterns._
     |import scalaz._, Scalaz._
   """.stripMargin.trim
 )
