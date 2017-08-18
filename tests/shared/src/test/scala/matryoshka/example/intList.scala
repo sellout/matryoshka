@@ -16,13 +16,16 @@
 
 package matryoshka.example
 
-import org.specs2.mutable._
-
 import slamdata.Predef._
-import matryoshka._
-import matryoshka.data._
-import matryoshka.implicits._
-import scalaz._
+import turtles._
+import turtles.data._
+import turtles.implicits._
+
+import scala.Either
+
+import cats._
+import cats.implicits._
+import org.specs2.mutable._
 
 sealed trait IntList[A]
 
@@ -70,9 +73,9 @@ object IntList {
     }
   }
 
-  def mapHead(f: Int => Int): GCoalgebra[Fix[IntList] \/ ?, IntList, Fix[IntList]] = {
+  def mapHead(f: Int => Int): GCoalgebra[Either[Fix[IntList], ?], IntList, Fix[IntList]] = {
     case Fix(IntNil()) => IntNil()
-    case Fix(IntCons(h, t)) => IntCons(f(h), \/.left(t))
+    case Fix(IntCons(h, t)) => IntCons(f(h), t.asLeft)
   }
 
   val infinite: Coalgebra[IntList, Int] = n => IntCons(n, n + 1)

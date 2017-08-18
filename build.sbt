@@ -4,15 +4,16 @@ import sbt._
 import Keys._
 import slamdata.SbtSlamData.transferPublishAndTagResources
 
-lazy val monocleVersion = "1.4.0"
-lazy val scalazVersion  = "7.2.15"
+lazy val catsVersion = "1.1.0"
+lazy val monocleVersion = "1.5.1-cats"
+lazy val specs2Version = "4.0.0"
 
 lazy val standardSettings = commonBuildSettings ++ Seq(
   logBuffered in Compile := false,
   logBuffered in Test := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
   exportJars := true,
-  organization := "com.slamdata",
+  organization := "org.technomadic",
   ScoverageKeys.coverageHighlighting := true,
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   wartremoverWarnings in (Compile, compile) --= Seq(
@@ -20,70 +21,77 @@ lazy val standardSettings = commonBuildSettings ++ Seq(
     Wart.ImplicitParameter), // see wartremover/wartremover#350 & #351
 
   libraryDependencies ++= Seq(
-    "com.slamdata"               %%  "slamdata-predef" % "0.0.6",
-    "com.github.julien-truffaut" %%% "monocle-core"    % monocleVersion % "compile, test",
-    "org.scalaz"                 %%% "scalaz-core"     % scalazVersion  % "compile, test",
-    "com.github.mpilquist"       %%% "simulacrum"      % "0.11.0"       % "compile, test"))
+    "com.slamdata"               %% "slamdata-predef" % "0.0.2",
+    "org.typelevel"              %% "cats-core"       % catsVersion    % "compile, test",
+    "org.typelevel"              %% "cats-free"       % catsVersion    % "compile, test",
+    "org.typelevel"              %% "cats-testkit"    % catsVersion    % "compile, test",
+    // "org.typelevel"              %% "kittens"         % "1.0.0-RC1"    % "compile, test",
+    "com.github.julien-truffaut" %% "monocle-core"    % monocleVersion % "compile, test",
+    // "com.github.julien-truffaut" %% "newts-core"      % "0.3.1"   % "compile, test",
+    "com.github.mpilquist"       %% "simulacrum"      % "0.10.0"       % "compile, test"))
 
 lazy val publishSettings = commonPublishSettings ++ Seq(
-  organizationName := "SlamData Inc.",
-  organizationHomepage := Some(url("http://slamdata.com")),
-  homepage := Some(url("https://github.com/slamdata/matryoshka")),
+  organizationName := "Greg Pfeil",
+  organizationHomepage := Some(url("http://technomadic.org")),
+  homepage := Some(url("https://github.com/sellout/turtles")),
   scmInfo := Some(
     ScmInfo(
-      url("https://github.com/slamdata/matryoshka"),
-      "scm:git@github.com:slamdata/matryoshka.git")))
+      url("https://github.com/sellout/turtles"),
+      "scm:git@github.com:sellout/turtles.git")))
 
 lazy val root = Project("root", file("."))
-  .settings(name := "matryoshka")
+  .settings(name := "turtles")
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(transferPublishAndTagResources)
   .settings(console := (console in replJVM).value)
   .aggregate(
     coreJS,  scalacheckJS,  testsJS,
     coreJVM, scalacheckJVM, testsJVM,
-    docs)
+    docs
+  )
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val core = crossProject.in(file("core"))
-  .settings(name := "matryoshka-core")
+  .settings(name := "turtles-core")
   .settings(standardSettings ++ publishSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val scalacheck = crossProject
   .dependsOn(core)
-  .settings(name := "matryoshka-scalacheck")
+  .settings(name := "turtles-scalacheck")
   .settings(standardSettings ++ publishSettings: _*)
   .settings(libraryDependencies ++= Seq(
-    // NB: Needs a version of Scalacheck with rickynils/scalacheck#301.
-    "org.scalacheck" %% "scalacheck"                % "1.14.0-861f58e-SNAPSHOT",
-    "org.scalaz"     %% "scalaz-scalacheck-binding" % (scalazVersion + "-scalacheck-1.13")))
+    "org.scalacheck"      %% "scalacheck"      % "1.14.0",
+    "io.github.amrhassan" %% "scalacheck-cats" % "0.4.0")
+  )
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val tests = crossProject
-  .settings(name := "matryoshka-tests")
+  .settings(name := "turtles-tests")
   .dependsOn(core, scalacheck)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(libraryDependencies ++= Seq(
-    "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % Test,
-    "org.typelevel"              %% "scalaz-specs2" % "0.5.0"        % Test,
-    "org.specs2"                 %% "specs2-core"   % "3.8.7"        % Test))
+    "io.github.amrhassan"        %% "scalacheck-cats"   % "0.4.0" % Test,
+    "org.typelevel"              %% "cats-laws"         % catsVersion % Test,
+    "com.github.julien-truffaut" %% "monocle-law"       % monocleVersion % Test,
+    "org.specs2"                 %% "specs2-core"       % specs2Version % Test,
+    "org.specs2"                 %% "specs2-scalacheck" % specs2Version % Test))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val docs = project
-  .settings(name := "matryoshka-docs")
+  .settings(name := "turtles-docs")
   .dependsOn(coreJVM)
   .settings(standardSettings ++ noPublishSettings: _*)
-  .settings(tutScalacOptions --= Seq("-Yno-imports", "-Ywarn-unused-import"))
+  .settings(scalacOptions in Tut --= Seq("-Yno-imports", "-Ywarn-unused-import"))
   .enablePlugins(MicrositesPlugin)
   .settings(
-    micrositeName             := "Matryoshka",
-    micrositeDescription      := "Generalized folds, unfolds, and traversals for fixed point data structures in Scala.",
-    micrositeAuthor           := "SlamData",
-    micrositeGithubOwner      := "slamdata",
-    micrositeGithubRepo       := "matryoshka",
-    micrositeBaseUrl          := "/matryoshka",
-    micrositeDocumentationUrl := "/matryoshka/docs/01-Getting-Started.html",
+    micrositeName             := "Turtles",
+    micrositeDescription      := "Generalized folds, unfolds, and traversals for fixed point data structures in Scala, using Cats.",
+    micrositeAuthor           := "Greg Pfeil",
+    micrositeGithubOwner      := "sellout",
+    micrositeGithubRepo       := "turtles",
+    micrositeBaseUrl          := "/turtles",
+    micrositeDocumentationUrl := "/turtles/docs/01-Getting-Started.html",
     micrositeHighlightTheme   := "color-brewer")
 
 /** A project just for the console.
@@ -93,11 +101,12 @@ lazy val repl = crossProject dependsOn (tests % "compile->test") settings standa
   console := (console in Test).value,
   scalacOptions --= Seq("-Yno-imports", "-Ywarn-unused-import"),
   initialCommands in console += """
-    |import matryoshka._
-    |import matryoshka.data._
-    |import matryoshka.implicits._
-    |import matryoshka.patterns._
-    |import scalaz._, Scalaz._
+    |import turtles._
+    |import turtles.data._
+    |import turtles.implicits._
+    |import turtles.patterns._
+    |import cats._
+    |import cats.implicits._
   """.stripMargin.trim
 )
 

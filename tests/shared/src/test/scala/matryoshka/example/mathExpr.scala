@@ -16,14 +16,15 @@
 
 package matryoshka.example
 
-import org.specs2.mutable._
-
 import slamdata.Predef._
-import matryoshka._
-import matryoshka.data._
-import matryoshka.implicits._
-import scalaz._
+import turtles._
+import turtles.data._
+import turtles.implicits._
+
 import scala.math.exp
+
+import cats._
+import org.specs2.mutable._
 
 /**
   * A mathematical expression of a single variable x.

@@ -16,12 +16,12 @@
 
 package matryoshka.example
 
-import org.specs2.mutable._
-
 import slamdata.Predef._
-import matryoshka._
-import matryoshka.implicits._
-import scalaz._
+import turtles._
+import turtles.implicits._
+
+import cats._
+import org.specs2.mutable._
 
 sealed trait BTree[A]
 
