@@ -4,8 +4,10 @@ import org.scalajs.sbtplugin.ScalaJSCrossVersion
 import scoverage._
 import sbt._
 import Keys._
-import slamdata.CommonDependencies
 import slamdata.SbtSlamData.transferPublishAndTagResources
+
+lazy val catsVersion = "1.0.0-SNAPSHOT"
+lazy val monocleVersion = "1.5.0-cats-M1"
 
 lazy val standardSettings = commonBuildSettings ++ Seq(
   logBuffered in Compile := false,
@@ -20,10 +22,13 @@ lazy val standardSettings = commonBuildSettings ++ Seq(
     Wart.ImplicitParameter), // see wartremover/wartremover#350 & #351
 
   libraryDependencies ++= Seq(
-    CommonDependencies.slamdata.predef,
-    CommonDependencies.monocle.core.cross(CrossVersion.binary)          % "compile, test",
-    CommonDependencies.scalaz.core.cross(CrossVersion.binary)           % "compile, test",
-    CommonDependencies.simulacrum.simulacrum.cross(CrossVersion.binary) % "compile, test"))
+    "com.slamdata"               %% "slamdata-predef" % "0.0.2",
+    "org.typelevel"              %% "cats-core"       % catsVersion    % "compile, test",
+    "org.typelevel"              %% "cats-free"       % catsVersion    % "compile, test",
+    "org.typelevel"              %% "kittens"         % "1.0.0-M11"    % "compile, test",
+    "com.github.julien-truffaut" %% "monocle-core"    % monocleVersion % "compile, test",
+    "com.github.julien-truffaut" %% "newts-core"      % "0.3.0-MF-2"   % "compile, test",
+    "com.github.mpilquist"       %% "simulacrum"      % "0.10.0"       % "compile, test"))
 
 lazy val publishSettings = commonPublishSettings ++ Seq(
   organizationName := "Greg Pfeil",
@@ -42,7 +47,8 @@ lazy val root = Project("root", file("."))
   .aggregate(
     coreJS,  scalacheckJS,  testsJS,
     coreJVM, scalacheckJVM, testsJVM,
-    docs)
+    docs
+  )
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val core = crossProject.in(file("core"))
@@ -56,8 +62,8 @@ lazy val scalacheck = crossProject
   .settings(standardSettings ++ publishSettings: _*)
   .settings(libraryDependencies ++= Seq(
     // NB: Needs a version of Scalacheck with rickynils/scalacheck#301.
-    "org.scalacheck" %% "scalacheck"                % "1.14.0-861f58e-SNAPSHOT",
-    "org.scalaz"     %% "scalaz-scalacheck-binding" % (CommonDependencies.scalazVersion + "-scalacheck-1.13")))
+    "org.scalacheck"      %% "scalacheck"      % "1.14.0-861f58e-SNAPSHOT",
+    "io.github.amrhassan" %% "scalacheck-cats" % "0.3.2"))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val tests = crossProject
@@ -65,9 +71,9 @@ lazy val tests = crossProject
   .dependsOn(core, scalacheck)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(libraryDependencies ++= Seq(
-    CommonDependencies.monocle.law            % Test,
-    CommonDependencies.typelevel.scalazSpecs2 % Test,
-    CommonDependencies.specs2.core            % Test))
+    "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % Test,
+    "org.typelevel"              %% "scalaz-specs2" % "0.5.0" % Test,
+    "org.specs2"                 %% "specs2-core"   % "3.8.7" % Test))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val docs = project
@@ -97,7 +103,8 @@ lazy val repl = crossProject dependsOn (tests % "compile->test") settings standa
     |import turtles.data._
     |import turtles.implicits._
     |import turtles.patterns._
-    |import scalaz._, Scalaz._
+    |import cats._
+    |import cats.implicits._
   """.stripMargin.trim
 )
 

@@ -18,7 +18,8 @@ package turtles.patterns
 
 import turtles.Delay
 
-import scalaz._, Scalaz._
+import cats._
+import cats.implicits._
 
 /** Generally similar to CoEnv (Free), this has an additional `success` case
   * that indicates there’s no failure down to the leaves.
@@ -34,13 +35,13 @@ final case class PartialFailure[T[_[_]], F[_], E, A] private[patterns](v: F[A])
     extends PotentialFailure[T, F, E, A]
 
 object PotentialFailure {
-  implicit def potentialFailureEqual[T[_[_]], F[_], E: Equal](implicit T: Equal[T[F]], F: Delay[Equal, F]): Delay[Equal, PotentialFailure[T, F, E, ?]] =
-    new Delay[Equal, PotentialFailure[T, F, E, ?]] {
-      def apply[α](eq: Equal[α]) =
-        Equal.equal {
-          case (Success(v1),        Success(v2))        => T.equal(v1, v2)
-          case (Failure(e1),        Failure(e2))        => e1 ≟ e2
-          case (PartialFailure(v1), PartialFailure(v2)) => F(eq).equal(v1, v2)
+  implicit def potentialFailureEq[T[_[_]], F[_], E: Eq](implicit T: Eq[T[F]], F: Delay[Eq, F]): Delay[Eq, PotentialFailure[T, F, E, ?]] =
+    new Delay[Eq, PotentialFailure[T, F, E, ?]] {
+      def apply[α](eq: Eq[α]) =
+        Eq.instance {
+          case (Success(v1),        Success(v2))        => T.eqv(v1, v2)
+          case (Failure(e1),        Failure(e2))        => e1 === e2
+          case (PartialFailure(v1), PartialFailure(v2)) => F(eq).eqv(v1, v2)
           case (_,                  _)                  => false
         }
     }
@@ -50,18 +51,32 @@ object PotentialFailure {
   implicit def bitraverse[T[_[_]], F[_]: Traverse]:
       Bitraverse[PotentialFailure[T, F, ?, ?]] =
     new Bitraverse[PotentialFailure[T, F, ?, ?]] {
-      def bitraverseImpl[G[_], A, B, C, D](
+      def bitraverse[G[_], A, B, C, D](
         fab: PotentialFailure[T, F, A, B])(
         f: A ⇒ G[C], g: B ⇒ G[D])(
         implicit G: Applicative[G]) =
         fab match {
-          case Success(v)        => G.point(Success(v))
-          case Failure(e)        => f(e) ∘ (Failure(_))
-          case PartialFailure(v) => v.traverse(g) ∘ (PartialFailure(_))
+          case Success(v)        => G.pure(Success(v))
+          case Failure(e)        => f(e).map(Failure(_))
+          case PartialFailure(v) => v.traverse(g).map(PartialFailure(_))
+        }
+
+      def bifoldLeft[A, B, C](
+        fab: PotentialFailure[T, F, A, B], c: C)(
+        f: (C, A) => C, g: (C, B) => C) =
+        fab match {
+          case Success(_)        => c
+          case Failure(e)        => f(c, e)
+          case PartialFailure(v) => v.foldLeft(c)(g)
+        }
+
+      def bifoldRight[A, B, C](
+        fab: PotentialFailure[T, F, A, B], c: Eval[C])(
+        f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]) =
+        fab match {
+          case Success(_)        => c
+          case Failure(e)        => f(e, c)
+          case PartialFailure(v) => v.foldRight(c)(g)
         }
     }
-
-  implicit def traverse[T[_[_]], F[_]: Traverse, E]:
-      Traverse[PotentialFailure[T, F, E, ?]] =
-    bitraverse[T, F].rightTraverse[E]
 }

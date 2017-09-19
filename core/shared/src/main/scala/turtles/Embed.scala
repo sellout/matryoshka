@@ -16,10 +16,10 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.implicits._
 
-import scalaz._
+import cats._
 
 /** An extractor to make it easier to pattern-match on arbitrary [[Recursive]]
   * structures.

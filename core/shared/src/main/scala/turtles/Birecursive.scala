@@ -16,11 +16,14 @@
 
 package turtles
 
+import slamdata.Predef.{Eq => _, _}
 import turtles.patterns.EnvT
 
 import scala.{Option, Unit}
 
-import scalaz._, Scalaz._
+import cats._
+import cats.free._
+import cats.implicits._
 
 /** A type that is both [[Recursive]] and [[Corecursive]].
   */
@@ -29,13 +32,13 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
     * instance and an overridden `cata`.
     */
   def lambek(tf: T)(implicit BF: Functor[Base]): Base[T] =
-    cata[Base[T]](tf)(_ ∘ embed)
+    cata[Base[T]](tf)(_.map(embed))
 
   /** Roughly a default impl of `embed`, given a [[turtles.Recursive]]
     * instance and an overridden `ana`.
     */
   def colambek(ft: Base[T])(implicit BF: Functor[Base]): T =
-    ana(ft)(_ ∘ project)
+    ana(ft)(_.map(project))
 
   def postpro[A](
     a: A)(
@@ -50,9 +53,9 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
     implicit BF: Functor[Base], N: Monad[N]):
       T =
     hylo[Yoneda[Base, ?], N[A], T](
-      a.point[N])(
-      fa => embed((fa ∘ (ana(_)(x => e(project(x))))).run),
-        ma => Yoneda(k(ma ∘ ψ)) ∘ (_.join))
+      a.pure[N])(
+      fa => embed((fa.map(ana(_)(x => e(project(x))))).run),
+        ma => Yoneda(k(ma.map(ψ))).map(_.flatten))
 
   override def para[A]
     (t: T)
@@ -66,23 +69,25 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
     (implicit BF: Functor[Base]) =
     elgotCata[(T, ?), A](t)(distPara, f)
 
-  override def paraZygo[A, B]
+  // FIXME: This should be an override, but it adds an extra implicit.
+  @SuppressWarnings(Array("org.wartremover.warts.Overloading"))
+  def paraZygo[A, B]
     (t: T)
     (f: GAlgebra[(T, ?), Base, B], g: GAlgebra[(B, ?), Base, A])
-    (implicit BF: Functor[Base], BU: Unzip[Base]) =
+    (implicit BF: Functor[Base], BU: Alternative[Base]) =
     gcataZygo[(T, ?), A, B](t)(distPara, f, g)
 
   override def apo[A]
     (a: A)
-    (f: GCoalgebra[T \/ ?, Base, A])
+    (f: GCoalgebra[Either[T, ?], Base, A])
     (implicit BF: Functor[Base]) =
-    gana[T \/ ?, A](a)(distApo, f)
+    gana[Either[T, ?], A](a)(distApo, f)
 
   override def elgotApo[A]
     (a: A)
-    (f: ElgotCoalgebra[T \/ ?, Base, A])
+    (f: ElgotCoalgebra[Either[T, ?], Base, A])
     (implicit BF: Functor[Base]) =
-    elgotAna[T \/ ?, A](a)(distApo, f)
+    elgotAna[Either[T, ?], A](a)(distApo, f)
 
   def gpara[W[_]: Comonad, A](
     t: T)(
@@ -105,12 +110,12 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
       A =
     hylo[Yoneda[Base, ?], T, W[A]](
       t)(
-      fwa => k((fwa ∘ (_.cojoin)).run) ∘ f,
-        t => Yoneda(project(t)) ∘ (cata[T](_)(c => embed(e(c))))).copoint
+      fwa => k((fwa.map(_.coflatten)).run).map(f),
+        t => Yoneda(project(t)).map(cata[T](_)(c => embed(e(c))))).extract
 
   // TODO: This should be an enrichment on Tuple2.
   private def sequenceTuple[F[_]: Functor, A, B](tup: (A, F[B])): F[(A, B)] =
-    tup._2 ∘ ((tup._1, _))
+    tup._2.map((tup._1, _))
 
   def topDownCata[A]
     (t: T, a: A)
@@ -134,7 +139,7 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
 
   override def transApo[U, G[_]: Functor]
     (u: U)
-    (f: CoalgebraicGTransform[T \/ ?, U, G, Base])
+    (f: CoalgebraicGTransform[Either[T, ?], U, G, Base])
     (implicit U: Recursive.Aux[U, G], BF: Functor[Base])
       : T =
     transGana(u)(distApo, f)
@@ -158,17 +163,17 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
     * is the original structure.
     */
   def transParaT(t: T)(f: ((T, T)) => T)(implicit BF: Functor[Base]): T =
-    elgotPara[T](t)(f <<< (_ ∘ embed))
+    elgotPara[T](t)(f <<< (_.map(embed)))
 
   def transAnaT(t: T)(f: T => T)(implicit BF: Functor[Base]): T =
     ana(t)(f >>> project)
 
   /** This behaves like [[turtles.Corecursive.elgotApo]]`, but it’s harder to
-    * see from the types that in the disjunction, `-\/` is the final result for
-    * this node, while `\/-` means to keep processing the children.
+    * see from the types that in the disjunction, `Left` is the final result for
+    * this node, while `Right` means to keep processing the children.
     */
-  def transApoT(t: T)(f: T => T \/ T)(implicit BF: Functor[Base]): T =
-    elgotApo(t)(f(_) ∘ project)
+  def transApoT(t: T)(f: T => Either[T, T])(implicit BF: Functor[Base]): T =
+    elgotApo(t)(f(_).map(project))
 
   def transCataTM[M[_]: Monad](t: T)(f: T => M[T])(implicit BF: Traverse[Base])
       : M[T] =
@@ -176,7 +181,7 @@ trait Birecursive[T] extends Recursive[T] with Corecursive[T] {
 
   def transAnaTM[M[_]: Monad](t: T)(f: T => M[T])(implicit BF: Traverse[Base])
       : M[T] =
-    anaM(t)(f(_) ∘ project)
+    anaM(t)(f(_).map(project))
 }
 
 object Birecursive {
@@ -197,10 +202,10 @@ object Birecursive {
   def lambekIso[T, F[_]: Functor](implicit T: Birecursive.Aux[T, F]) =
     AlgebraIso[F, T](T.colambek(_))(T.lambek(_))
 
-  def equal[T, F[_]: Traverse]
-    (implicit T: Birecursive.Aux[T, F], F: Equal[F[Unit]])
-      : Equal[T] =
-    Equal.equal((a, b) =>
+  def biEq[T, F[_]: Traverse]
+    (implicit T: Birecursive.Aux[T, F], F: Eq[F[Unit]])
+      : Eq[T] =
+    Eq.instance((a, b) =>
       T.anaM[Option, (T, T)]((a, b)) {
         case (a, b) => Merge.fromTraverse[F].merge(T.project(a), T.project(b))
       }.isDefined)
@@ -208,12 +213,12 @@ object Birecursive {
   def order[T, F[_]: Traverse]
     (implicit T: Birecursive.Aux[T, F], F: Order[F[Unit]])
       : Order[T] =
-    Order.order((a, b) =>
-      T.anaM[Ordering \/ ?, (T, T)]((a, b)) {
+    Order.from((a, b) =>
+      T.anaM[Either[Int, ?], (T, T)]((a, b)) {
         case (a, b) =>
           val (fa, fb) = (T.project(a), T.project(b))
-          Merge.fromTraverse[F].merge(fa, fb) \/> (fa.void ?|? fb.void)
-      }.as(Ordering.EQ).merge)
+          Merge.fromTraverse[F].merge(fa, fb).toRight(fa.void compare fb.void)
+      }.as(0).merge)
 
   // NB: The rest of this is what would be generated by simulacrum, except this
   //     type class is too complicated to take advantage of that.
@@ -275,7 +280,7 @@ object Birecursive {
     def transAnaT(f: T => T)(implicit BF: Functor[F]): T =
       typeClassInstance.transAnaT(self)(f)
 
-    def transApoT(f: T => T \/ T)(implicit BF: Functor[F]): T =
+    def transApoT(f: T => Either[T, T])(implicit BF: Functor[F]): T =
       typeClassInstance.transApoT(self)(f)
 
     def transCataTM[M[_]: Monad](f: T => M[T])(implicit BF: Traverse[F])

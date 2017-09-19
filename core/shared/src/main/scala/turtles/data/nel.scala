@@ -16,23 +16,23 @@
 
 package turtles.data
 
+import slamdata.Predef.{Eq => _, _}
+
 import turtles._
 import turtles.patterns._
 
-import scalaz._
+import cats.data._
 
 trait NonEmptyListInstances {
   implicit def nelBirecursive[A]
       : Birecursive.Aux[NonEmptyList[A], AndMaybe[A, ?]] =
     Birecursive.algebraIso({
-      case Indeed(a, bs) => a <:: bs
-      case Only(a)     => NonEmptyList(a)
-    },
-      // TODO: restore exhaustivity when scalaz/scalaz#1363 is fixed, or we're on Cats.
-      (_: NonEmptyList[A] @scala.unchecked) match {
-        case NonEmptyList(a, ICons(b, cs)) => Indeed(a, NonEmptyList.nel(b, cs))
-        case NonEmptyList(a, INil())       => Only(a)
-      })
+      case Indeed(a, bs) => NonEmptyList(a, bs.toList)
+      case Only(a)       => NonEmptyList(a, Nil)
+    }, {
+      case NonEmptyList(a, b :: cs) => Indeed(a, NonEmptyList(b, cs))
+      case NonEmptyList(a, Nil)     => Only(a)
+    })
 }
 
 object nel extends NonEmptyListInstances

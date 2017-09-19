@@ -16,10 +16,11 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.implicits._
 
-import scalaz._, Scalaz._, Leibniz._
+import cats._
+import cats.implicits._
 
 package object patterns {
   // These aliases are because these functors require a higher-order functor as
@@ -36,7 +37,7 @@ package object patterns {
         Diffable[F].diffImpl(l, r).getOrElse(Different[T, F, T[Diff[T, F, ?]]](l, r).embed))(
         merged => {
           val children = merged.toList
-          (if (children.length ≟ children.collect { case Same(_) => () }.length)
+          (if (children.length === children.collect { case Same(_) => () }.length)
             Same[T, F, T[Diff[T, F, ?]]](l).embed
           else
             Similar[T, F, T[Diff[T, F, ?]]](merged).embed)

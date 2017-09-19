@@ -22,46 +22,47 @@ import turtles.scalacheck.cogen._
 
 import java.lang.String
 
+import cats._
+import cats.implicits._
 import monocle.law.discipline._
 import org.scalacheck._
 import org.specs2.mutable._
 import org.typelevel.discipline.specs2.mutable._
-import scalaz._, Scalaz._
 
 trait AlgebraChecks extends SpecificationLike with Discipline {
   def checkFoldIsoLaws
-    [T: Arbitrary: Equal, F[_]: Functor, A: Arbitrary: Equal: Cogen]
+    [T: Arbitrary: Eq, F[_]: Functor, A: Arbitrary: Eq: Cogen]
     (name: String, iso: AlgebraIso[F, A])
     (implicit T: Birecursive.Aux[T, F]) =
     checkAll(name + " Iso", IsoTests(foldIso[T, F, A](iso)))
 
   def checkFoldPrismLaws
-    [T: Arbitrary: Equal, F[_]: Traverse, A: Arbitrary: Equal: Cogen]
+    [T: Arbitrary: Eq, F[_]: Traverse, A: Arbitrary: Eq: Cogen]
     (name: String, prism: AlgebraPrism[F, A])
     (implicit T: Birecursive.Aux[T, F]) =
     checkAll(name + " Prism", PrismTests(foldPrism(prism)))
 
   def checkUnfoldPrismLaws
-    [T: Arbitrary: Equal: Cogen, F[_]: Traverse, A: Arbitrary: Equal]
+    [T: Arbitrary: Eq: Cogen, F[_]: Traverse, A: Arbitrary: Eq]
     (name: String, prism: CoalgebraPrism[F, A])
     (implicit T: Birecursive.Aux[T, F]) =
     checkAll(name + " Prism", PrismTests(unfoldPrism(prism)))
 
-  def checkAlgebraIsoLaws[F[_], A: Arbitrary: Equal: Cogen]
+  def checkAlgebraIsoLaws[F[_], A: Arbitrary: Eq: Cogen]
     (name: String, iso: AlgebraIso[F, A])
-    (implicit FA: Delay[Arbitrary, F], FE: Delay[Equal, F]) =
+    (implicit FA: Delay[Arbitrary, F], FE: Delay[Eq, F]) =
     checkAll(name + " Iso", IsoTests(iso))
 
-  def checkAlgebraPrismLaws[F[_], A: Arbitrary: Equal: Cogen]
+  def checkAlgebraPrismLaws[F[_], A: Arbitrary: Eq: Cogen]
     (name: String, prism: AlgebraPrism[F, A])
-    (implicit FA: Delay[Arbitrary, F], FE: Delay[Equal, F]) =
+    (implicit FA: Delay[Arbitrary, F], FE: Delay[Eq, F]) =
     checkAll(name + " Prism", PrismTests(prism))
 
-  def checkCoalgebraPrismLaws[F[_], A: Arbitrary: Equal: Cogen]
+  def checkCoalgebraPrismLaws[F[_], A: Arbitrary: Eq: Cogen]
     (name: String, prism: CoalgebraPrism[F, A])
     (implicit
       FA: Delay[Arbitrary, F],
-      FE: Delay[Equal, F],
+      FE: Delay[Eq, F],
       FC: Delay[Cogen, F]) =
     checkAll(name + " Prism", PrismTests(prism))
 }

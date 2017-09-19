@@ -16,7 +16,7 @@
 
 package turtles.patterns
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.data.Mu
 import turtles.example._
@@ -27,11 +27,12 @@ import turtles.scalacheck.arbitrary._
 
 import scala.Predef.implicitly
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.specs2.scalaz.{ScalazMatchers}
-import scalaz._, Scalaz._
 import scalaz.scalacheck.ScalazProperties._
 
 trait DiffArb {

@@ -18,7 +18,7 @@ package turtles.data
 
 import turtles._
 
-import scalaz._
+import cats.data._
 
 trait IdInstances {
   /** This is a single (low-priority) instance to provide folds/unfolds for all

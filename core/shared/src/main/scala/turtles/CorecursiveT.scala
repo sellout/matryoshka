@@ -16,7 +16,7 @@
 
 package turtles
 
-import scalaz._
+import cats._
 
 /** This is a workaround for a certain use case (e.g.,
   * [[turtles.patterns.Diff]] and [[turtles.patterns.PotentialFailure]]).

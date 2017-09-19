@@ -16,17 +16,18 @@
 
 package turtles.example
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.helpers._
 import turtles.implicits._
 import turtles.patterns._
 import turtles.scalacheck.arbitrary._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import scalaz._, Scalaz._
 import scalaz.scalacheck.ScalazProperties._
 
 sealed abstract class Example[A]
@@ -46,23 +47,23 @@ object Example {
       case NonRec(a, b)   => G.point(NonRec(a, b))
       case SemiRec(a, b)  => f(b).map(SemiRec(a, _))
       case MultiRec(a, b) => (f(a) ⊛ f(b))(MultiRec(_, _))
-      case OneList(a)     => a.traverse(f) ∘ (OneList(_))
-      case TwoLists(a, b) => (a.traverse(f) ⊛ b.traverse(f))(TwoLists(_, _))
+      case OneList(a)     => a.traverse(f).map(OneList(_))
+      case TwoLists(a, b) => (a.traverse(f), b.traverse(f)).mapN(TwoLists(_, _))
     }
   }
 
-  implicit val equal: Delay[Equal, Example] = new Delay[Equal, Example] {
-    def apply[α](eq: Equal[α]) = Equal.equal((a, b) => {
+  implicit val equal: Delay[Eq, Example] = new Delay[Eq, Example] {
+    def apply[α](eq: Eq[α]) = Eq.equal((a, b) => {
       implicit val ieq = eq
         (a, b) match {
         case (Empty(),          Empty())          => true
-        case (NonRec(s1, i1),   NonRec(s2, i2))   => s1 ≟ s2 && i1 ≟ i2
+        case (NonRec(s1, i1),   NonRec(s2, i2))   => s1 === s2 && i1 === i2
         case (SemiRec(i1, a1),  SemiRec(i2, a2))  =>
-          i1 ≟ i2 && eq.equal(a1, a2)
+          i1 === i2 && eq.eqv(a1, a2)
         case (MultiRec(a1, b1), MultiRec(a2, b2)) =>
-          eq.equal(a1, a2) && eq.equal(b1, b2)
-        case (OneList(l),       OneList(r))       => l ≟ r
-        case (TwoLists(l1, l2), TwoLists(r1, r2)) => l1 ≟ r1 && l2 ≟ r2
+          eq.eqv(a1, a2) && eq.eqv(b1, b2)
+        case (OneList(l),       OneList(r))       => l === r
+        case (TwoLists(l1, l2), TwoLists(r1, r2)) => l1 === r1 && l2 === r2
         case (_,                _)                => false
       }
     })
@@ -72,16 +73,16 @@ object Example {
     def apply[α](s: Show[α]) = {
       implicit val is = s
       Show.show {
-        case Empty()          => Cord("Empty()")
+        case Empty()          => "Empty()"
         case NonRec(s2, i2)   =>
-          Cord("NonRec(" + s2.shows + ", " + i2.shows + ")")
+          "NonRec(" |+| s2.show |+| ", " |+| i2.shows |+| ")"
         case SemiRec(i2, a2)   =>
-          Cord("SemiRec(") ++ i2.show ++ Cord(", ") ++ s.show(a2) ++ Cord(")")
+          "SemiRec(" |+| i2.show |+| ", " |+| s.show(a2) |+| ")"
         case MultiRec(a2, b2) =>
-          Cord("MultiRec(") ++ s.show(a2) ++ Cord(", ") ++ s.show(b2) ++ Cord(")")
-        case OneList(r)       => Cord("OneList(") ++ r.show ++ Cord(")")
+          "MultiRec(" |+| s.show(a2) |+| ", " |+| s.show(b2) |+| ")"
+        case OneList(r)       => "OneList(" |+| r.show |+| ")"
         case TwoLists(r1, r2) =>
-          Cord("TwoLists(") ++ r1.show ++ Cord(", ") ++ r2.show ++ Cord(")")
+          "TwoLists(" |+| r1.show |+| ", " |+| r2.show |+| ")"
       }
     }
   }

@@ -16,21 +16,22 @@
 
 package turtles.data
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 
-import scalaz._
+import cats._
+import cats.data._
 
 trait OptionInstances {
   implicit def optionBirecursive[A]
       : Birecursive.Aux[Option[A], Const[Option[A], ?]] =
     id.idBirecursive[Option[A]]
 
-  implicit val optionDelayEqual: Delay[Equal, Option] =
-    new Delay[Equal, Option] {
-      def apply[A](a: Equal[A]) = {
-        implicit val aʹ: Equal[A] = a
-        Equal[Option[A]]
+  implicit val optionDelayEq: Delay[Eq, Option] =
+    new Delay[Eq, Option] {
+      def apply[A](a: Eq[A]) = {
+        implicit val aʹ: Eq[A] = a
+        Eq[Option[A]]
       }
     }
 

@@ -16,18 +16,19 @@
 
 package turtles.instances.fixedpoint
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.implicits._
 import turtles.scalacheck.arbitrary._
 
 import scala.Predef.implicitly
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.specs2.scalaz.{ScalazMatchers}
-import scalaz._, Scalaz._
 import scalaz.scalacheck.{ScalazProperties => Props}
 
 class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
@@ -96,7 +97,7 @@ class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
     // NB: This test will depend on the size of your stack, you may have to
     //     increase the initial value on larger stacks.
     "return a value well after stack would overflow" in {
-      100000000.ana[Partial[Unit]](i => if (i ≟ 0) ().left else (i - 1).right)
+      100000000.ana[Partial[Unit]](i => if (i === 0) ().left else (i - 1).right)
         .unsafePerformSync must
         equal(())
     }

@@ -17,8 +17,11 @@
 package turtles.patterns
 
 import turtles._
+import turtles.derived._
 
-import scalaz._, Scalaz._
+import cats._
+import cats.free._
+import cats.implicits._
 
 /** This is the transformer for the (,) comonad.
   */
@@ -54,10 +57,10 @@ sealed abstract class EnvTInstances1 {
 }
 
 sealed abstract class EnvTInstances0 extends EnvTInstances1 {
-  implicit def cobind[E, W[_]](implicit W0: Cobind[W]):
-      Cobind[EnvT[E, W, ?]] =
-    new EnvTCobind[E, W] {
-      implicit def W: Cobind[W] = W0
+  implicit def cobind[E, W[_]](implicit W0: CoflatMap[W]):
+      CoflatMap[EnvT[E, W, ?]] =
+    new EnvTCoflatMap[E, W] {
+      implicit def W: CoflatMap[W] = W0
     }
 }
 
@@ -65,32 +68,32 @@ sealed abstract class EnvTInstances extends EnvTInstances0 {
   implicit def comonad[E, W[_]](implicit W0: Comonad[W]): Comonad[EnvT[E, W, ?]] =
     new EnvTComonad[E, W] { implicit def W: Comonad[W] = W0 }
 
-  implicit def equal[E: Equal, W[_]](implicit W: Delay[Equal, W]): Delay[Equal, EnvT[E, W, ?]] =
-    new Delay[Equal, EnvT[E, W, ?]] {
-      def apply[A](eq: Equal[A]) =
-        Equal.equal((a, b) => a.ask ≟ b.ask && W(eq).equal(a.lower, b.lower))
+  implicit def equal[E: Eq, W[_]](implicit W: Delay[Eq, W]): Delay[Eq, EnvT[E, W, ?]] =
+    new Delay[Eq, EnvT[E, W, ?]] {
+      def apply[A](eq: Eq[A]) =
+        Eq.instance((a, b) => a.ask === b.ask && W(eq).eqv(a.lower, b.lower))
     }
 
   implicit def show[E: Show, F[_]](implicit F: Delay[Show, F]): Delay[Show, EnvT[E, F, ?]] =
     new Delay[Show, EnvT[E, F, ?]] {
       def apply[A](sh: Show[A]) =
         Show.show(envt =>
-          Cord("EnvT(") ++ envt.ask.show ++ Cord(", ") ++ F(sh).show(envt.lower) ++ Cord(")"))
+          "EnvT(" |+| envt.ask.show |+| ", " |+| F(sh).show(envt.lower) |+| ")")
     }
 
   implicit def bitraverse[F[_]](implicit F0: Traverse[F]): Bitraverse[EnvT[?, F, ?]] =
     new EnvTBitraverse[F] { implicit def F: Traverse[F] = F0 }
 
   implicit def traverse[E, F[_]: Traverse]: Traverse[EnvT[E, F, ?]] =
-    bitraverse[F].rightTraverse
+    bitraverseTraverse[EnvT[?, F, ?], E]
 }
 
 trait EnvTFunctions {
   def envT[E, W[_], A](v: (E, W[A])): EnvT[E, W, A] = EnvT(v)
 
   def cofreeIso[E, W[_]] = AlgebraIso[EnvT[E, W, ?], Cofree[W, E]](
-    et => Cofree(et.ask, et.lower))(
-    cof => EnvT((cof.head, cof.tail)))
+    et => Cofree(et.ask, Later(et.lower)))(
+    cof => EnvT((cof.head, cof.tail.value)))
 }
 
 //
@@ -110,24 +113,34 @@ private trait EnvTBitraverse[F[_]]
 {
   implicit def F: Traverse[F]
 
-  override final def bitraverseImpl[G[_]: Applicative, A, B, C, D]
+  override final def bitraverse[G[_]: Applicative, A, B, C, D]
     (fab: EnvT[A, F, B])
     (f: A ⇒ G[C], g: B ⇒ G[D]) =
-    fab.run.bitraverse(f, _.traverse(g)) ∘ (EnvT(_))
+    fab.run.bitraverse(f, _.traverse(g)).map(EnvT(_))
+
+  override final def bifoldLeft[A, B, C](
+    fab: EnvT[A, F, B], c: C)(
+    f: (C, A) => C, g: (C, B) => C) =
+    fab.run.bifoldLeft(c)(f, (c, b) => b.foldLeft(c)(g))
+
+  override final def bifoldRight[A, B, C](
+    fab: EnvT[A, F, B], c: Eval[C])(
+    f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]) =
+    fab.run.bifoldRight(c)(f, _.foldRight(_)(g))
 }
 
-private trait EnvTCobind[E, W[_]] extends Cobind[EnvT[E, W, ?]] with EnvTFunctor[E, W] {
-  implicit def W: Cobind[W]
+private trait EnvTCoflatMap[E, W[_]] extends CoflatMap[EnvT[E, W, ?]] with EnvTFunctor[E, W] {
+  implicit def W: CoflatMap[W]
 
-  override final def cojoin[A](fa: EnvT[E, W, A]): EnvT[E, W, EnvT[E, W, A]] =
-    EnvT((fa.ask, fa.lower.cobind(x => EnvT((fa.ask, x)))))
+  override final def coflatten[A](fa: EnvT[E, W, A]): EnvT[E, W, EnvT[E, W, A]] =
+    EnvT((fa.ask, fa.lower.coflatMap(x => EnvT((fa.ask, x)))))
 
-  override final def cobind[A, B](fa: EnvT[E, W, A])(f: EnvT[E, W, A] => B): EnvT[E, W, B] =
-    cojoin(fa).map(f)
+  override final def coflatMap[A, B](fa: EnvT[E, W, A])(f: EnvT[E, W, A] => B): EnvT[E, W, B] =
+    coflatten(fa).map(f)
 }
 
-private trait EnvTComonad[E, W[_]] extends Comonad[EnvT[E, W, ?]] with EnvTCobind[E, W] {
+private trait EnvTComonad[E, W[_]] extends Comonad[EnvT[E, W, ?]] with EnvTCoflatMap[E, W] {
   implicit def W: Comonad[W]
 
-  def copoint[A](p: EnvT[E, W, A]): A = p.lower.copoint
+  def extract[A](p: EnvT[E, W, A]): A = p.lower.extract
 }

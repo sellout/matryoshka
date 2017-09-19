@@ -19,22 +19,24 @@ package turtles.data
 import turtles._
 import turtles.patterns.CoEnv
 
-import scalaz._, Scalaz._
+import cats._
+import cats.free._
+import cats.implicits._
 
 trait FreeInstances {
   implicit def freeBirecursive[F[_]: Functor, A]
       : Birecursive.Aux[Free[F, A], CoEnv[A, F, ?]] =
     Birecursive.algebraIso(
-      _.run.fold(_.point[Free[F, ?]], Free.liftF(_).join),
+      _.run.fold(_.pure[Free[F, ?]], Free.liftF(_).flatten),
       t => CoEnv(t.resume.swap))
 
-  implicit def freeEqual[F[_]: Traverse](implicit F: Delay[Equal, F]):
-      Delay[Equal, Free[F, ?]] =
-    new Delay[Equal, Free[F, ?]] {
-      def apply[A](eq: Equal[A]) = {
-        implicit val coenvʹ: Delay[Equal, CoEnv[A, F, ?]] = CoEnv.equal(eq, F)
+  implicit def freeEq[F[_]: Traverse](implicit F: Delay[Eq, F]):
+      Delay[Eq, Free[F, ?]] =
+    new Delay[Eq, Free[F, ?]] {
+      def apply[A](eq: Eq[A]) = {
+        implicit val coenvʹ: Delay[Eq, CoEnv[A, F, ?]] = CoEnv.equal(eq, F)
 
-        Birecursive.equal[Free[F, A], CoEnv[A, F, ?]]
+        Birecursive.biEq[Free[F, A], CoEnv[A, F, ?]]
       }
     }
 

@@ -16,15 +16,16 @@
 
 package turtles.instances
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.data._
+import turtles.derived._
 import turtles.implicits._
 import turtles.patterns._
 
+import cats._
+import cats.implicits._
 import monocle.Prism
-
-import scalaz._, Scalaz._
 
 /** This package provides instances of various common data structures
   * implemented explicitly as fixed-points.
@@ -39,7 +40,7 @@ package object fixedpoint {
     def zero[N](implicit N: Corecursive.Aux[N, Option]) = none[N].embed
 
     def succ[N](prev: N)(implicit N: Corecursive.Aux[N, Option]) =
-      some(prev).embed
+      prev.some.embed
 
     def one[N](implicit N: Corecursive.Aux[N, Option]) = succ(zero)
 
@@ -105,7 +106,7 @@ package object fixedpoint {
           (elem: => A)
           (implicit N: Recursive.Aux[N, Option], L: Corecursive.Aux[L, ListF[A, ?]])
             : L =
-          n.transAna[L](tuple(elem))
+          n.transAna[L](tuple(elem)(_))
       }
     }
   }
@@ -138,14 +139,20 @@ package object fixedpoint {
 
   implicit def recursiveTListFFoldable[T[_[_]]: RecursiveT]: Foldable[λ[α => T[ListF[α, ?]]]] =
     new Foldable[λ[α => T[ListF[α, ?]]]] {
-      def foldMap[A, B: Monoid](fa: T[ListF[A, ?]])(f: A ⇒ B) =
+      override def foldMap[A, B: Monoid](fa: T[ListF[A, ?]])(f: A ⇒ B) =
         fa.cata[B] {
-          case NilF()      => Monoid[B].zero
+          case NilF()      => Monoid[B].empty
           case ConsF(a, b) => f(a) |+| b
         }
 
-      def foldRight[A, B](fa: T[ListF[A, ?]], z: ⇒ B)(f: (A, ⇒ B) ⇒ B) =
+      def foldLeft[A, B](fa: T[ListF[A, ?]], z: B)(f: (B, A) ⇒ B) =
         fa.cata[B] {
+          case NilF()      => z
+          case ConsF(a, b) => f(b, a)
+        }
+
+      def foldRight[A, B](fa: T[ListF[A, ?]], z: Eval[B])(f: (A, Eval[B]) ⇒ Eval[B]) =
+        fa.cata[Eval[B]] {
           case NilF()      => z
           case ConsF(a, b) => f(a, b)
         }
@@ -154,8 +161,8 @@ package object fixedpoint {
   implicit def birecursiveListFMonoid[T, A](implicit T: Birecursive.Aux[T, ListF[A, ?]])
       : Monoid[T] =
     new Monoid[T] {
-      def zero = NilF[A, T]().embed
-      def append(f1: T, f2: => T) = f1.cata[T] {
+      def empty = NilF[A, T]().embed
+      def combine(f1: T, f2: T) = f1.cata[T] {
         case NilF() => f2
         case cons   => cons.embed
       }
@@ -173,8 +180,8 @@ package object fixedpoint {
     (implicit T: Recursive.Aux[T, AndMaybe[A, ?]]) {
     def toPossiblyEmpty[L](implicit L: Corecursive.Aux[L, ListF[A, ?]]) =
       self.transApo[L, ListF[A, ?]] {
-        case Indeed(a, b) => ConsF(a, b.right)
-        case Only(a)      => ConsF(a, NilF[A, L]().embed.left)
+        case Indeed(a, b) => ConsF(a, b.asRight)
+        case Only(a)      => ConsF(a, NilF[A, L]().embed.asLeft)
       }
   }
 
@@ -184,8 +191,8 @@ package object fixedpoint {
 
   object Stream {
     def matchesFirst[A, B](cond: A => Boolean) =
-      λ[(A, ?) ~> (A \/ ?)] {
-        case (h, t) => if (cond(h)) h.left else t.right
+      λ[(A, ?) ~> Either[A, ?]] {
+        case (h, t) => if (cond(h)) h.asLeft else t.asRight
       }
 
     def take[N, T, A](implicit N: Recursive.Aux[N, Option], T: Recursive.Aux[T, (A, ?)]): Coalgebra[ListF[A, ?], (N, T)] = {
@@ -227,15 +234,15 @@ package object fixedpoint {
 
   implicit class BirecursiveTuple2Ops[T, A](self: T)(implicit T: Birecursive.Aux[T, (A, ?)]) {
     /** Drops exactly `n` elements from the stream.
-      * This doesn’t expose the Coalgebra because it returns `Stream \/ Stream`,
-      * which isn’t the type of `drop`.
+      * This doesn’t expose the Coalgebra because it returns
+      * `Either[Stream, Stream]`, which isn’t the type of `drop`.
       */
     def drop[N](n: N)(implicit N: Recursive.Aux[N, Option]): T =
       (n, self).anaM[T] {
         case (r, stream) =>
-          r.project.fold[T \/ (A, (N, T))](
-            stream.left)(
-            prev => stream.project.map((prev, _)).right)
+          r.project.fold[Either[T, (A, (N, T))]](
+            stream.asLeft)(
+            prev => stream.project.map((prev, _)).asRight)
       }.merge
 
     object take {
@@ -254,60 +261,68 @@ package object fixedpoint {
 
   /** Encodes a function that may diverge.
     */
-  type Partial[A] = Nu[A \/ ?]
+  type Partial[A] = Nu[Either[A, ?]]
 
   object Partial {
     /** A partial function that immediately evaluates to the provided value.
       */
-    def now[A](a: A): Partial[A] = a.left[Nu[A \/ ?]].embed
+    def now[A](a: A): Partial[A] = a.asLeft[Nu[Either[A, ?]]].embed
 
-    def later[A](partial: Partial[A]): Partial[A] = partial.right[A].embed
+    def later[A](partial: Partial[A]): Partial[A] = partial.asRight[A].embed
 
-    def delay[A](a: A): Option ~> (A \/ ?) = λ[Option ~> (A \/ ?)](_ \/> a)
+    def delay[A](a: A): Option ~> Either[A, ?] =
+      λ[Option ~> Either[A, ?]](_.toRight(a))
 
     /** Canonical function that diverges.
       */
-    def never[A]: Partial[A] = ().ana[Nu[A \/ ?]](_.right[A])
+    def never[A]: Partial[A] = ().ana[Nu[Either[A, ?]]](_.asRight[A])
 
     /** This instance is not implicit, because it potentially runs forever.
       */
-    def equal[A: Equal]: Equal[Partial[A]] =
-      Equal.equal((a, b) => (a ≈ b).unsafePerformSync)
+    def equal[A: Eq]: Eq[Partial[A]] =
+      Eq.instance((a, b) => (a ≈ b).unsafePerformSync)
 
     def fromOption[A](opt: Option[A]): Partial[A] = opt.fold(never[A])(now)
 
     def fromPartialFunction[A, B](pf: PartialFunction[A, B]):
         A => Partial[B] =
-      pf.lift ⋙ fromOption
+      pf.lift >>> fromOption
   }
 
   implicit def recursiveTEitherFoldable[T[_[_]]: RecursiveT]
-      : Foldable[λ[α => T[α \/ ?]]] =
-    new Foldable[λ[α => T[α \/ ?]]] {
-      def foldMap[A, B: Monoid](fa: T[A \/ ?])(f: A ⇒ B) =
+      : Foldable[λ[α => T[Either[α, ?]]]] =
+    new Foldable[λ[α => T[Either[α, ?]]]] {
+      override def foldMap[A, B: Monoid](fa: T[Either[A, ?]])(f: A ⇒ B) =
         fa.cata[B](_.leftMap(f).merge)
 
-      def foldRight[A, B](fa: T[A \/ ?], z: ⇒ B)(f: (A, ⇒ B) ⇒ B) =
-        fa.cata[B](_.leftMap(f(_, z)).merge)
+      def foldLeft[A, B](fa: T[Either[A, ?]], z: B)(f: (B, A) ⇒ B) =
+        fa.cata[B](_.leftMap(f(z, _)).merge)
+
+      def foldRight[A, B](fa: T[Either[A, ?]], z: Eval[B])(f: (A, Eval[B]) ⇒ Eval[B]) =
+        fa.cata[Eval[B]](_.leftMap(f(_, z)).merge)
     }
 
   implicit val partialMonad: Monad[Partial] = new Monad[Partial] {
-    def point[A](a: => A) = Partial.now(a)
+    def pure[A](a: A) = Partial.now(a)
 
-    def bind[A, B](fa: Partial[A])(f: A => Partial[B]) =
+    def flatMap[A, B](fa: Partial[A])(f: A => Partial[B]) =
       fa.cata[Partial[B]](_.leftMap(f).merge)
+
+    def tailRecM[A, B](a: A)(f: A => Partial[Either[A,B]]): Partial[B] =
+      f(a).flatMap(_.fold(tailRecM(_)(f), pure))
   }
 
   implicit class PartialOps[A](self: Partial[A]) {
-    def step: A \/ Partial[A] = self.project
+    def step: Either[A, Partial[A]] = self.project
 
     /** Returns `left` if the result was found within the given number of steps.
       */
-    def runFor[N](steps: N)(implicit N: Recursive.Aux[N, Option]): A \/ Partial[A] =
+    def runFor[N](steps: N)(implicit N: Recursive.Aux[N, Option])
+        : Either[A, Partial[A]] =
       (steps, self).anaM[Partial[A]] {
-        case (r, p) => r.project.fold[(A \/ Partial[A]) \/ (A \/ (N, Partial[A]))](
-          p.project.left)(
-          prev => p.project.bimap(_.left, (prev, _).right))
+        case (r, p) => r.project.fold[Either[Either[A, Partial[A]], Either[A, (N, Partial[A])]]](
+          p.project.asLeft)(
+          prev => p.project.bimap(_.asLeft, (prev, _).asRight))
       }.map(_.step).merge
 
     /** Run to completion (if it completes).
@@ -317,15 +332,15 @@ package object fixedpoint {
     //         _.cataM[Free.Trampoline](p => Trampoline.delay(p.merge)) // still blows up
     //         _.hyloM[Free.Trampoline](..., p.project.point)           // takes forever
     @tailrec final def unsafePerformSync: A = self.project match {
-      case -\/(a) => a
-      case \/-(p) => p.unsafePerformSync
+      case Left(a)  => a
+      case Right(p) => p.unsafePerformSync
     }
 
     // TODO: Would be nice to have this in ApplicativeOps
     /** If two `Partial`s eventually have the same value, then they are
       * equivalent.
       */
-    def ≈(that: Partial[A])(implicit A: Equal[A]): Partial[Boolean] =
-      (self ⊛ that)(_ ≟ _)
+    def ≈(that: Partial[A])(implicit A: Eq[A]): Partial[Boolean] =
+      (self, that).mapN(_ === _)
   }
 }

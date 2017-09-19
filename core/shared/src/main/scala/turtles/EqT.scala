@@ -16,25 +16,25 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.implicits._
 
-import scalaz._
+import cats._
 import simulacrum._
 
-@typeclass trait EqualT[T[_[_]]] {
-  def equal[F[_]: Functor](tf1: T[F], tf2: T[F])(implicit del: Delay[Equal, F]):
+@typeclass trait EqT[T[_[_]]] {
+  def eqv[F[_]: Functor](tf1: T[F], tf2: T[F])(implicit del: Delay[Eq, F]):
       Boolean
 
-  def equalT[F[_]: Functor](delay: Delay[Equal, F]): Equal[T[F]] =
-    Equal.equal[T[F]](equal[F](_, _)(Functor[F], delay))
+  def eqT[F[_]: Functor](delay: Delay[Eq, F]): Eq[T[F]] =
+    Eq.instance[T[F]](eqv[F](_, _)(Functor[F], delay))
 }
 
-object EqualT {
-  def recursiveT[T[_[_]]: RecursiveT]: EqualT[T] = new EqualT[T] {
-    def equal[F[_]: Functor]
+object EqT {
+  def recursiveT[T[_[_]]: RecursiveT]: EqT[T] = new EqT[T] {
+    def eqv[F[_]: Functor]
       (tf1: T[F], tf2: T[F])
-      (implicit del: Delay[Equal, F]) =
-      del(equalT[F](del)).equal(tf1.project, tf2.project)
+      (implicit del: Delay[Eq, F]) =
+      del(eqT[F](del)).eqv(tf1.project, tf2.project)
   }
 }

@@ -16,18 +16,19 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.data._
 import turtles.exp._
 import turtles.helpers._
 import turtles.implicits._
 import turtles.runners._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._, Prop._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.specs2.scalaz.ScalazMatchers
-import scalaz._, Scalaz._
 
 class ZygoSpecs extends Specification with ScalaCheck with ScalazMatchers {
 

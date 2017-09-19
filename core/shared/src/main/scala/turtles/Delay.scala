@@ -16,7 +16,7 @@
 
 package turtles
 
-import scalaz._
+import cats._
 
 /** To avoid diverging implicits with fixed-point types, we need to defer the
   * lookup.

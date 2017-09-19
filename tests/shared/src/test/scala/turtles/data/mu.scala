@@ -16,15 +16,16 @@
 
 package turtles.data
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.exp.Exp
 import turtles.helpers._
 import turtles.patterns.CoEnv
 import turtles.scalacheck.arbitrary._
 import turtles.scalacheck.cogen._
 
+import cats._
+import cats.implicits._
 import org.specs2.mutable._
-import scalaz._, Scalaz._
 import scalaz.scalacheck.ScalazProperties._
 
 class MuSpec extends Specification with AlgebraChecks {

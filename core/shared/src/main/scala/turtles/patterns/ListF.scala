@@ -16,10 +16,13 @@
 
 package turtles.patterns
 
-import slamdata.Predef._
-import turtles._, Recursive.ops._
+import slamdata.Predef.{Eq => _, _}
+import turtles._
+import turtles.derived._
+import turtles.implicits._
 
-import scalaz._, Scalaz._
+import cats._
+import cats.implicits._
 
 sealed abstract class ListF[A, B] {
   def headOption: Option[A] = this match {
@@ -52,10 +55,10 @@ object ListF {
     case NilF()      => None
   }
 
-  implicit def equal[A: Equal]: Delay[Equal, ListF[A, ?]] =
-    new Delay[Equal, ListF[A, ?]] {
-      def apply[β](eq: Equal[β]) = Equal.equal((a, b) => (a, b) match {
-        case (ConsF(h1, t1), ConsF(h2, t2)) => h1 ≟ h2 && eq.equal(t1, t2)
+  implicit def equal[A: Eq]: Delay[Eq, ListF[A, ?]] =
+    new Delay[Eq, ListF[A, ?]] {
+      def apply[β](eq: Eq[β]) = Eq.instance((a, b) => (a, b) match {
+        case (ConsF(h1, t1), ConsF(h2, t2)) => h1 === h2 && eq.eqv(t1, t2)
         case (NilF(),        NilF())        => true
         case (_,             _)             => false
       })
@@ -64,21 +67,35 @@ object ListF {
   implicit def show[A: Show]: Delay[Show, ListF[A, ?]] =
     new Delay[Show, ListF[A, ?]] {
       def apply[β](show: Show[β]) = Show.show {
-        case ConsF(h, t) => h.show ++ Cord("::") ++ show.show(t)
-        case NilF()      => Cord("nil")
+        case ConsF(h, t) => h.show |+| "::" |+| show.show(t)
+        case NilF()      => "nil"
       }
     }
 
   implicit def bitraverse: Bitraverse[ListF] = new Bitraverse[ListF] {
-      def bitraverseImpl[G[_], A, B, C, D](
+      def bitraverse[G[_], A, B, C, D](
         fab: ListF[A, B])(
         f: A ⇒ G[C], g: B ⇒ G[D])(
         implicit G: Applicative[G]) =
         fab match {
-          case NilF()        => G.point(NilF())
-          case ConsF(a, b)   => (f(a) ⊛ g(b))(ConsF(_, _))
+          case NilF()      => G.pure(NilF())
+          case ConsF(a, b) => (f(a), g(b)).mapN(ConsF(_, _))
         }
-    }
 
-  implicit def traverse[A]: Traverse[ListF[A, ?]] = bitraverse.rightTraverse[A]
+    def bifoldLeft[A, B, C](
+      fab: ListF[A,B],c: C)(
+      f: (C, A) => C, g: (C, B) => C) =
+      fab match {
+        case NilF()      => c
+        case ConsF(a, b) => g(f(c, a), b)
+      }
+
+    def bifoldRight[A, B, C](
+      fab: ListF[A,B], c: Eval[C])(
+      f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]) =
+      fab match {
+        case NilF()      => c
+        case ConsF(a, b) => f(a, g(b, c))
+      }
+    }
 }

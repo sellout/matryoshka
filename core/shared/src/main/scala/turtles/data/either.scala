@@ -16,10 +16,10 @@
 
 package turtles.data
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 
-import scalaz._
+import cats.data._
 
 trait EitherInstances {
   implicit def eitherBirecursive[A, B]

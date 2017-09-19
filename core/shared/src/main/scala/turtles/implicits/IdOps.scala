@@ -16,9 +16,11 @@
 
 package turtles.implicits
 
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 
-import scalaz._
+import cats._
+import cats.free._
 
 sealed class IdOps[A](self: A) {
   def hylo[F[_]: Functor, B](f: Algebra[F, B], g: Coalgebra[F, A]): B =
@@ -64,7 +66,7 @@ sealed class IdOps[A](self: A) {
       B =
     turtles.chrono(self)(g, f)
 
-  def elgot[F[_]: Functor, B](φ: Algebra[F, B], ψ: ElgotCoalgebra[B \/ ?, F, A]): B =
+  def elgot[F[_]: Functor, B](φ: Algebra[F, B], ψ: ElgotCoalgebra[Either[B, ?], F, A]): B =
     turtles.elgot(self)(φ, ψ)
 
   def coelgot[F[_]: Functor, B](φ: ElgotAlgebra[(A, ?), F, B], ψ: Coalgebra[F, A]): B =
@@ -145,7 +147,7 @@ sealed class IdOps[A](self: A) {
 
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
-        (f: GCoalgebra[T \/ ?, F, A])
+        (f: GCoalgebra[Either[T, ?], F, A])
         (implicit T: Corecursive.Aux[T, F])
           : T =
         T.apo(self)(f)
@@ -157,7 +159,7 @@ sealed class IdOps[A](self: A) {
 
     final class PartiallyApplied[T] {
       def apply[M[_]: Monad, F[_]: Traverse]
-        (f: GCoalgebraM[T \/ ?, M, F, A])
+        (f: GCoalgebraM[Either[T, ?], M, F, A])
         (implicit T: Corecursive.Aux[T, F])
           : M[T] =
         T.apoM(self)(f)
@@ -169,7 +171,7 @@ sealed class IdOps[A](self: A) {
 
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor, B]
-        (f: Coalgebra[F, B], g: GCoalgebra[B \/ ?, F, A])
+        (f: Coalgebra[F, B], g: GCoalgebra[Either[B, ?], F, A])
         (implicit T: Corecursive.Aux[T, F])
           : T =
         T.gapo(self)(f, g)
@@ -181,7 +183,7 @@ sealed class IdOps[A](self: A) {
 
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
-        (f: ElgotCoalgebra[T \/ ?, F, A])
+        (f: ElgotCoalgebra[Either[T, ?], F, A])
         (implicit T: Corecursive.Aux[T, F])
           : T =
         T.elgotApo(self)(f)

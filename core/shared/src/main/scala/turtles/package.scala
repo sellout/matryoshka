@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
+import turtles.data.cofree._
 import turtles.data.free._
+import turtles.derived._
 import turtles.implicits._
 import turtles.instances.fixedpoint.{BirecursiveOptionOps, Nat}
 import turtles.patterns.{CoEnv, EnvT}
 
+import cats._
+import cats.arrow._
+import cats.data._
+import cats.free._
+import cats.functor._
+import cats.implicits._
 import monocle._
-import scalaz._, Liskov._, Scalaz._
 
 /** Generalized folds, unfolds, and refolds.
   *
@@ -226,7 +233,7 @@ package object turtles {
     */
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   def hylo[F[_]: Functor, A, B](a: A)(φ: Algebra[F, B], ψ: Coalgebra[F, A]): B =
-    φ(ψ(a) ∘ (hylo(_)(φ, ψ)))
+    φ(ψ(a).map(hylo(_)(φ, ψ)))
 
   /** A Kleisli hylomorphism.
     *
@@ -242,7 +249,7 @@ package object turtles {
   /** Composition of an elgot-anamorphism and an elgot-catamorphism that avoids
     * building the intermediate recursive data structure.
     *
-    * `elgotCata ⋘ elgotAna`
+    * `elgotCata <<< elgotAna`
     *
     * @group refolds
     */
@@ -251,27 +258,27 @@ package object turtles {
       (kφ: DistributiveLaw[F, W], kψ: DistributiveLaw[N, F], φ: ElgotAlgebra[W, F, B], ψ: ElgotCoalgebra[N, F, A])
         : B = {
     lazy val trans: N[A] => W[B] =
-      na => loop(na >>= ψ) cobind φ
+      na => loop(na >>= ψ) coflatMap φ
     lazy val loop: N[F[A]] => W[F[B]] =
-      (kψ[A] _) ⋙ (_ map trans) ⋙ kφ[B]
-    (ψ ⋙ loop ⋙ φ)(a)
+      (kψ[A] _) >>> (_ map trans) >>> kφ[B]
+    (ψ >>> loop >>> φ)(a)
   }
 
-  /** `histo ⋘ ana`
+  /** `histo <<< ana`
     *
     * @group refolds
     */
   def dyna[F[_]: Functor, A, B](a: A)(φ: F[Cofree[F, B]] => B, ψ: Coalgebra[F, A]): B =
     ghylo[Cofree[F, ?], Id, F, A, B](a)(distHisto, distAna, φ, ψ)
 
-  /** `cata ⋘ futu`
+  /** `cata <<< futu`
     *
     * @group refolds
     */
   def codyna[F[_]: Functor, A, B](a: A)(φ: Algebra[F, B], ψ: GCoalgebra[Free[F, ?], F, A]): B =
     ghylo[Id, Free[F, ?], F, A, B](a)(distCata, distFutu, φ, ψ)
 
-  /** `cataM ⋘ futuM`
+  /** `cataM <<< futuM`
     *
     * @group refolds
     */
@@ -279,7 +286,7 @@ package object turtles {
     ghyloM[Id, Free[F, ?], M, F, A, B](a)(distCata, distFutu, φ, ψ)
 
   /** A generalized version of a hylomorphism that composes any coalgebra and
-    * algebra. (`gcata ⋘ gana`)
+    * algebra. (`gcata <<< gana`)
     *
     * @group refolds
     */
@@ -291,10 +298,10 @@ package object turtles {
     g: GCoalgebra[N, F, A]):
       B =
     hylo[Yoneda[F, ?], N[A], W[B]](
-      a.point[N])(
-      fwb => w((fwb ∘ (_.cojoin)).run) ∘ f, na => Yoneda(n(na ∘ g)) ∘ (_.join)).copoint
+      a.pure[N])(
+      fwb => w((fwb.map(_.coflatten)).run).map(f), na => Yoneda(n(na.map(g))).map(_.flatten)).extract
 
-  /** A Kleisli `ghylo` (`gcataM ⋘ ganaM`)
+  /** A Kleisli `ghylo` (`gcataM <<< ganaM`)
     *
     * @group refolds
     */
@@ -306,10 +313,9 @@ package object turtles {
     g: GCoalgebraM[N, M, F, A]):
       M[B] =
     hyloM[M, F, N[A], W[B]](
-      a.point[N])(
-      fwb => w(fwb ∘ (_.cojoin)).traverse(f),
-        na => na.traverse(g) ∘ (n(_) ∘ (_.join))) ∘
-      (_.copoint)
+      a.pure[N])(
+      fwb => w(fwb.map(_.coflatten)).traverse(f),
+        na => na.traverse(g).map(n(_).map(_.flatten))).map(_.extract)
 
   /** Similar to a hylomorphism, this composes a futumorphism and a
     * histomorphism.
@@ -322,32 +328,32 @@ package object turtles {
       B =
     ghylo[Cofree[F, ?], Free[F, ?], F, A, B](a)(distHisto, distFutu, g, f)
 
-  /** `cata ⋘ elgotGApo`
+  /** `cata <<< elgotGApo`
     *
     * @group refolds
     */
   def elgot[F[_], A, B]
     (a: A)
-    (φ: Algebra[F, B], ψ: ElgotCoalgebra[B \/ ?, F, A])
+    (φ: Algebra[F, B], ψ: ElgotCoalgebra[Either[B, ?], F, A])
     (implicit F: Functor[F])
       : B =
-    hylo[((B \/ ?) ∘ F)#λ, A, B](a)(_.swap.valueOr(φ), ψ)(Functor[B \/ ?] compose F)
+    hylo[(Either[B, ?] ∘ F)#λ, A, B](a)(_.swap.valueOr(φ), ψ)(Functor[Either[B, ?]] compose F)
 
-  /** `cataM ⋘ elgotGApoM`
+  /** `cataM <<< elgotGApoM`
     *
     * @group refolds
     */
   def elgotM[M[_], F[_], A, B]
     (a: A)
-    (φ: AlgebraM[M, F, B], ψ: ElgotCoalgebraM[B \/ ?, M, F, A])
+    (φ: AlgebraM[M, F, B], ψ: ElgotCoalgebraM[Either[B, ?], M, F, A])
     (implicit M: Monad[M], F: Traverse[F])
       : M[B] =
-    hyloM[M, ((B \/ ?) ∘ F)#λ, A, B](
+    hyloM[M, (Either[B, ?] ∘ F)#λ, A, B](
       a)(
-      _.fold(_.point[M], φ), ψ)(
-      M, Traverse[B \/ ?] compose F)
+      _.fold(_.pure[M], φ), ψ)(
+      M, Traverse[Either[B, ?]] compose F)
 
-  /** `elgotZygo ⋘ ana`
+  /** `elgotZygo <<< ana`
     *
     * @group refolds
     */
@@ -358,7 +364,7 @@ package object turtles {
       : B =
     hylo[((A, ?) ∘ F)#λ, A, B](a)(φ, a => (a, ψ(a)))(Functor[(A, ?)] compose F)
 
-  /** `elgotZygoM ⋘ anaM`
+  /** `elgotZygoM <<< anaM`
     *
     * @group refolds
     */
@@ -372,7 +378,7 @@ package object turtles {
           : M[B] =
         hyloM[M, ((A, ?) ∘ F)#λ, A, B](
           a)(
-          φ, a => ψ(a) strengthL a)(
+          φ, a => ψ(a).map((a, _)))(
           M, Traverse[(A, ?)] compose F)
     }
   }
@@ -406,7 +412,7 @@ package object turtles {
     *
     * @group dist
     */
-  def distCata[F[_]]: DistributiveLaw[F, Id] = NaturalTransformation.refl
+  def distCata[F[_]]: DistributiveLaw[F, Id] = FunctionK.id
 
   /** A general [[DistributiveLaw]] for the case where the [[scalaz.Comonad]] is
     * also [[scalaz.Applicative]].
@@ -423,10 +429,10 @@ package object turtles {
     *
     * @group dist
     */
-  def distDistributive[F[_]: Functor, G[_]: Distributive] =
-    new DistributiveLaw[F, G] {
-      def apply[A](fga: F[G[A]]) = fga.cosequence
-    }
+  // def distDistributive[F[_]: Functor, G[_]: Distributive] =
+  //   new DistributiveLaw[F, G] {
+  //     def apply[A](fga: F[G[A]]) = fga.cosequence
+  //   }
 
   /**
     *
@@ -434,7 +440,7 @@ package object turtles {
     */
   def distZygo[F[_]: Functor, B](g: Algebra[F, B]) =
     new DistributiveLaw[F, (B, ?)] {
-      def apply[α](m: F[(B, α)]) = (g(m ∘ (_._1)), m ∘ (_._2))
+      def apply[α](m: F[(B, α)]) = (g(m.map(_._1)), m.map(_._2))
     }
 
   /**
@@ -445,7 +451,7 @@ package object turtles {
     g: AlgebraM[M, F, B], k: DistributiveLaw[F, M]) =
     new DistributiveLaw[F, (M ∘ (B, ?))#λ] {
       def apply[α](fm: F[M[(B, α)]]) = {
-        k(fm) >>= { f => g(f ∘ (_._1)) ∘ ((_, f ∘ (_._2))) }
+        k(fm) >>= { f => g(f.map(_._1)).map((_, f.map(_._2))) }
       }
     }
 
@@ -457,7 +463,7 @@ package object turtles {
     g: Algebra[F, B], k: DistributiveLaw[F, W]) =
     new DistributiveLaw[F, EnvT[B, W, ?]] {
       def apply[α](fe: F[EnvT[B, W, α]]) =
-        EnvT((g(fe ∘ (_.ask)), k(fe ∘ (_.lower))))
+        EnvT((g(fe.map(_.ask)), k(fe.map(_.lower))))
     }
 
   /**
@@ -467,7 +473,7 @@ package object turtles {
   def distHisto[F[_]: Functor] =
     new DistributiveLaw[F, Cofree[F, ?]] {
       def apply[α](m: F[Cofree[F, α]]) =
-        distGHisto[F, F](NaturalTransformation.refl[λ[α => F[F[α]]]]).apply(m)
+        distGHisto[F, F](FunctionK.id[λ[α => F[F[α]]]]).apply(m)
     }
 
   /**
@@ -480,21 +486,21 @@ package object turtles {
   def distGHisto[F[_]: Functor,  H[_]: Functor](k: DistributiveLaw[F, H]) =
     new DistributiveLaw[F, Cofree[H, ?]] {
       def apply[α](m: F[Cofree[H, α]]) =
-        Cofree.unfold(m)(as => (as ∘ (_.copure), k(as ∘ (_.tail))))
+        m.ana[Cofree[H, F[α]]](as => EnvT[F[α], H, F[Cofree[H, α]]]((as.map(_.extract), k(as.map(_.tail.value)))))
     }
 
   /**
     *
     * @group dist
     */
-  def distAna[F[_]]: DistributiveLaw[Id, F] = NaturalTransformation.refl
+  def distAna[F[_]]: DistributiveLaw[Id, F] = FunctionK.id
 
   /**
     *
     * @group dist
     */
   def distApo[T, F[_]: Functor](implicit T: Recursive.Aux[T, F])
-      : DistributiveLaw[T \/ ?, F] =
+      : DistributiveLaw[Either[T, ?], F] =
     distGApo[F, T](T.project(_))
 
   /**
@@ -502,8 +508,9 @@ package object turtles {
     * @group dist
     */
   def distGApo[F[_]: Functor, B](g: Coalgebra[F, B]) =
-    new DistributiveLaw[B \/ ?, F] {
-      def apply[α](m: B \/ F[α]) = m.bitraverse(g(_), x => x)
+    new DistributiveLaw[Either[B, ?], F] {
+      def apply[α](m: Either[B, F[α]]) =
+        m.fold(g(_).map(_.asLeft), _.map(_.asRight))
     }
 
   /** Allows for more complex unfolds, like
@@ -515,7 +522,7 @@ package object turtles {
     g: Coalgebra[F, B], k: DistributiveLaw[M, F]) =
     new DistributiveLaw[EitherT[M, B, ?], F] {
       def apply[α](m: EitherT[M, B, F[α]]) =
-        k(m.run.map(distGApo(g).apply(_))).map(EitherT(_))
+        k(m.value.map(distGApo(g).apply(_))).map(EitherT(_))
     }
 
   /**
@@ -525,7 +532,7 @@ package object turtles {
   def distFutu[F[_]: Functor] =
     new DistributiveLaw[Free[F, ?], F] {
       def apply[α](m: Free[F, F[α]]) =
-        distGFutu[F, F](NaturalTransformation.refl[λ[α => F[F[α]]]]).apply(m)
+        distGFutu[F, F](FunctionK.id[λ[α => F[F[α]]]]).apply(m)
     }
 
   /**
@@ -539,34 +546,8 @@ package object turtles {
       : DistributiveLaw[Free[H, ?], F] =
     new DistributiveLaw[Free[H, ?], F] {
       def apply[A](m: Free[H, F[A]]) =
-        m.cata[F[Free[H, A]]](_.run.fold(_ ∘ Free.point, k(_) ∘ Free.roll))
+        m.cata[F[Free[H, A]]](_.run.fold(_.map(Free.pure), k(_).map(Free.roll)))
     }
-
-  def holes[F[_]: Traverse, A](fa: F[A]): F[(A, Coalgebra[F, A])] =
-    (fa.mapAccumL(0) {
-      case (i, x) =>
-        val h: Coalgebra[F, A] = { y =>
-          val g: (Int, A) => (Int, A) = (j, z) => (j + 1, if (i == j) y else z)
-
-          fa.mapAccumL(0)(g)._2
-        }
-
-        (i + 1, (x, h))
-    })._2
-
-  def holesList[F[_]: Traverse, A](fa: F[A]): List[(A, Coalgebra[F, A])] =
-    holes(fa).toList
-
-  def builder[F[_]: Traverse, A, B](fa: F[A], children: List[B]): F[B] = {
-    (fa.mapAccumL(children) {
-      case (x :: xs, _) => (xs, x)
-      case _ => scala.sys.error("Not enough children")
-    })._2
-  }
-
-  def project[F[_]: Foldable, A](index: Int, fa: F[A]): Option[A] =
-   if (index < 0) None
-   else fa.toList.drop(index).headOption
 
   /** Turns any F-algebra, into a transform that attributes the tree with
     * the results for each node.
@@ -581,7 +562,7 @@ package object turtles {
         (f: AlgebraM[M, F, A])
         (implicit T: Recursive.Aux[T, EnvT[A, F, ?]])
           : TransformM[M, T, F, EnvT[A, F, ?]] =
-        fa => f(fa ∘ (_.project.ask)) ∘ (a => EnvT((a, fa)))
+        fa => f(fa.map(_.project.ask)).map(a => EnvT((a, fa)))
     }
   }
 
@@ -666,7 +647,7 @@ package object turtles {
         (f: ElgotAlgebraM[W, M, F, A])
         (implicit W: Comonad[W], M: Functor[M], T: Recursive.Aux[T, EnvT[A, F, ?]])
           : AlgebraicElgotTransformM[W, M, T, F, EnvT[A, F, ?]] =
-        node => f(node ∘ (_ ∘ (_.project.ask))) ∘ (a => EnvT((a, node.copoint)))
+        node => f(node.map(_.map(_.project.ask))).map(a => EnvT((a, node.extract)))
     }
   }
 
@@ -698,7 +679,7 @@ package object turtles {
       AlgebraM[M, EnvT[A, F, ?], B] =
     ann => φ(ann.run)
 
-  def runT[F[_], A, B](ψ: ElgotCoalgebra[A \/ ?, F, B])
+  def runT[F[_], A, B](ψ: ElgotCoalgebra[Either[A, ?], F, B])
       : Coalgebra[CoEnv[A, F, ?], B] =
     b => CoEnv(ψ(b))
 
@@ -706,38 +687,38 @@ package object turtles {
     *
     * @group algtrans
     */
-  implicit def GAlgebraZip[W[_]: Functor, F[_]: Functor]:
-      Zip[GAlgebra[W, F, ?]] =
-    new Zip[GAlgebra[W, F, ?]] {
-      def zip[A, B](a: ⇒ GAlgebra[W, F, A], b: ⇒ GAlgebra[W, F, B]) =
-        node => (a(node ∘ (_ ∘ (_._1))), b(node ∘ (_ ∘ (_._2))))
+  implicit def GAlgebraCartesian[W[_]: Functor, F[_]: Functor]:
+      Cartesian[GAlgebra[W, F, ?]] =
+    new Cartesian[GAlgebra[W, F, ?]] {
+      def product[A, B](a: GAlgebra[W, F, A], b: GAlgebra[W, F, B]) =
+        node => (a(node.map(_.map(_._1))), b(node.map(_.map(_._2))))
     }
   /**
     *
     * @group algtrans
     */
-  implicit def AlgebraZip[F[_]: Functor] = GAlgebraZip[Id, F]
+  implicit def AlgebraCartesian[F[_]: Functor] = GAlgebraCartesian[Id, F]
 
   /**
     *
     * @group algtrans
     */
-  implicit def ElgotAlgebraMZip[W[_]: Functor, M[_]: Applicative, F[_]: Functor]:
-      Zip[ElgotAlgebraM[W, M, F, ?]] =
-    new Zip[ElgotAlgebraM[W, M, F, ?]] {
-      def zip[A, B](a: ⇒ ElgotAlgebraM[W, M, F, A], b: ⇒ ElgotAlgebraM[W, M, F, B]) =
-        w => Bitraverse[(?, ?)].bisequence((a(w ∘ (_ ∘ (_._1))), b(w ∘ (_ ∘ (_._2)))))
+  implicit def ElgotAlgebraMCartesian[W[_]: Functor, M[_]: Applicative, F[_]: Functor]:
+      Cartesian[ElgotAlgebraM[W, M, F, ?]] =
+    new Cartesian[ElgotAlgebraM[W, M, F, ?]] {
+      def product[A, B](a: ElgotAlgebraM[W, M, F, A], b: ElgotAlgebraM[W, M, F, B]) =
+        w => Bitraverse[(?, ?)].bisequence((a(w.map(_.map(_._1))), b(w.map(_.map(_._2)))))
     }
   /**
     *
     * @group algtrans
     */
-  implicit def ElgotAlgebraZip[W[_]: Functor, F[_]: Functor] =
-    ElgotAlgebraMZip[W, Id, F]
+  implicit def ElgotAlgebraCartesian[W[_]: Functor, F[_]: Functor] =
+    ElgotAlgebraMCartesian[W, Id, F]
     // (ann, node) => node.unfzip.bimap(f(ann, _), g(ann, _))
 
-  final def repeatedlyƒ[A](f: A => Option[A]): Coalgebra[A \/ ?, A] =
-    a => f(a) \/> a
+  final def repeatedlyƒ[A](f: A => Option[A]): Coalgebra[Either[A, ?], A] =
+    a => f(a).toRight(a)
 
   /** Repeatedly applies the function to the result as long as it returns Some.
     * Finally returns the last non-None value (which may be the initial input).
@@ -747,7 +728,7 @@ package object turtles {
   object repeatedly {
     def apply[P] = new PartiallyApplied[P]
     class PartiallyApplied[P] {
-      def apply[A](f: A => Option[A])(implicit P: Corecursive.Aux[P, A \/ ?])
+      def apply[A](f: A => Option[A])(implicit P: Corecursive.Aux[P, Either[A, ?]])
           : A => P =
         _.ana[P](repeatedlyƒ(f))
     }
@@ -772,11 +753,11 @@ package object turtles {
     *
     * @group algebras
     */
-  def count[T: Equal, F[_]: Functor: Foldable]
+  def count[T: Eq, F[_]: Functor: Foldable]
     (form: T)
     (implicit T: Recursive.Aux[T, F])
       : ElgotAlgebra[(T, ?), F, Int] =
-    e => (e._1 ≟ form).fold(1, 0) + e._2.foldRight(0)(_ + _)
+    e => (if (e._1 === form) 1 else 0) + e._2.foldRight(Eval.now(0))((a, b) => b.map(a + _)).value
 
   /** The number of nodes in this structure.
     *
@@ -787,7 +768,7 @@ package object turtles {
     class PartiallyApplied[N] {
       def apply[F[_]: Foldable](implicit N: Birecursive.Aux[N, Option])
           : Algebra[F, N] =
-        _.foldRight(Nat.one[N])(_ + _)
+        _.foldRight(Now(Nat.one[N]))((a, b) => b.map(a + _)).value
     }
   }
 
@@ -795,31 +776,32 @@ package object turtles {
     *
     * @group algebras
     */
-  def height[F[_]: Foldable]: Algebra[F, Int] = _.foldRight(-1)(_ max _) + 1
+  def height[F[_]: Foldable]: Algebra[F, Int] =
+    _.foldRight(Eval.now(-1))((a, b) => b.map(a max _).map(_ + 1)).value
 
   /** Collects the set of all subtrees.
     *
     * @group algebras 
     */
   def universe[F[_]: Foldable, A]: ElgotAlgebra[(A, ?), F, NonEmptyList[A]] =
-    p => NonEmptyList.nel(p._1, p._2.toIList.unite)
+    p => NonEmptyList(p._1, p._2.toList.unite)
 
   /** Combines a tuple of zippable functors.
     *
     * @group algebras
     */
-  def zipTuple[T, F[_]: Functor: Zip](implicit T: Recursive.Aux[T, F])
+  def zipTuple[T, F[_]: Functor: Cartesian](implicit T: Recursive.Aux[T, F])
       : Coalgebra[F, (T, T)] =
-    p => Zip[F].zip[T, T](p._1.project, p._2.project)
+    p => Cartesian[F].product[T, T](p._1.project, p._2.project)
 
   /** Aligns “These” into a single structure, short-circuting when we hit a
     * “This” or “That”.
     *
     * @group algebras
     */
-  def alignThese[T, F[_]: Align](implicit T: Recursive.Aux[T, F])
-      : ElgotCoalgebra[T \/ ?, F, T \&/ T] =
-    _.fold(_.left, _.left, (a, b) => a.project.align(b.project).right)
+  // def alignThese[T, F[_]: Align](implicit T: Recursive.Aux[T, F])
+  //     : ElgotCoalgebra[Either[T, ?], F, Ior[T, T]] =
+  //   _.fold(_.asLeft, _.asLeft, (a, b) => a.project.align(b.project).asRight)
 
   /** Merges a tuple of functors, if possible.
     *
@@ -863,33 +845,33 @@ package object turtles {
     *
     * @group algebras
     */
-  def toTree[F[_]: Functor: Foldable]: Algebra[F, Tree[F[Unit]]] =
-    x => Tree.Node(x.void, x.toStream)
+  // def toTree[F[_]: Functor: Foldable]: Algebra[F, Tree[F[Unit]]] =
+  //   x => Tree.Node(x.void, x.toStream)
 
   /** Returns (on the left) the first element that passes `f`.
     */
-  def find[T](f: T => Boolean): T => T \/ T =
-    tf => (f(tf)).fold(tf.left, tf.right)
+  def find[T](f: T => Boolean): T => Either[T, T] =
+    tf => if (f(tf)) tf.asLeft else tf.asRight
 
   /** Replaces all instances of `original` in the structure with `replacement`.
     *
     * @group algebras
     */
-  def substitute[T: Equal](original: T, replacement: T): T => T \/ T =
-    find[T](_ ≟ original)(_).leftMap(_ => replacement)
+  def substitute[T: Eq](original: T, replacement: T): T => Either[T, T] =
+    find[T](_ === original)(_).leftMap(_ => replacement)
 
   /** This implicit allows Delay implicits to be found when searching for a
     * traditionally-defined instance.
     */
-  implicit def delayEqual[F[_], A](implicit F: Delay[Equal, F], A: Equal[A])
-      : Equal[F[A]] =
+  implicit def delayEq[F[_], A](implicit F: Delay[Eq, F], A: Eq[A])
+      : Eq[F[A]] =
     F(A)
 
   implicit def delayOrder[F[_], A](implicit F: Delay[Order, F], A: Order[A])
       : Order[F[A]] =
     F(A)
 
-  /** See `delayEqual`.
+  /** See `delayEq`.
     */
   implicit def delayShow[F[_], A](implicit F: Delay[Show, F], A: Show[A]):
       Show[F[A]] =
@@ -930,17 +912,29 @@ package object turtles {
         BirecursiveT[T].anaT[F, A](a)(f)
     }
 
-  implicit def equalTEqual[T[_[_]], F[_]: Functor](implicit T: EqualT[T], F: Delay[Equal, F]): Equal[T[F]] =
-    T.equalT[F](F)
+  implicit def eqTEq[T[_[_]], F[_]: Functor](implicit T: EqT[T], F: Delay[Eq, F]): Eq[T[F]] =
+    T.eqT[F](F)
 
   implicit def showTShow[T[_[_]], F[_]: Functor](implicit T: ShowT[T], F: Delay[Show, F]): Show[T[F]] =
     T.showT[F](F)
 
   implicit def birecursiveTFunctor[T[_[_]]: BirecursiveT, F[_, _]](implicit F: Bifunctor[F]): Functor[λ[α => T[F[α, ?]]]] =
     new Functor[λ[α => T[F[α, ?]]]] {
-      implicit def RF[A]: Functor[F[A, ?]] = F.rightFunctor
-
       def map[A, B](fa: T[F[A, ?]])(f: A => B) =
         fa.transCata[T[F[B, ?]]](_.leftMap[B](f))
     }
+
+  // TODO: Get this into Cats proper.
+  implicit class ExtraTraverseOps[F[_]: Traverse, A](fa: F[A]) {
+    import cats.data._
+
+    def zipWith[B, C](fb: F[B])(f: (A, Option[B]) => C): (List[B], F[C]) =
+      fa.traverse[State[List[B], ?], C](a => for {
+        bs <- State.get
+        _ <- State.set(if (bs.isEmpty) bs else bs.drop(1))
+      } yield f(a, bs.headOption)).run(fb.toList).value
+
+    def zipWithL[B, C](fb: F[B])(f: (A, Option[B]) => C): F[C] = zipWith(fb)(f)._2
+    def zipWithR[B, C](fb: F[B])(f: (Option[A], B) => C): F[C] = fb.zipWith(fa)((b,oa) => f(oa,b))._2
+  }
 }

@@ -20,8 +20,9 @@ import turtles._
 import turtles.data._
 import turtles.implicits._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
-import scalaz._, Scalaz._
 
 trait ShrinkInstancesʹ {
   implicit def delayShrink[F[_], A](implicit A: Shrink[A], F: Delay[Shrink, F]): Shrink[F[A]] =
@@ -35,7 +36,7 @@ trait ShrinkInstances extends ShrinkInstancesʹ {
   def recursiveShrink[T, F[_]: Functor: Foldable]
     (implicit T: Recursive.Aux[T, F])
       : Shrink[T] =
-    Shrink(_.project.toStream)
+    Shrink(_.project.toList.toStream)
 
   /** An instance for [[turtles.Birecursive]] types where the [[Base]] has a
     * [[scalacheck.Shrink]] instance.
@@ -51,7 +52,7 @@ trait ShrinkInstances extends ShrinkInstancesʹ {
   def corecursiveShrink[T, F[_]: Functor: Foldable]
     (implicit T: Birecursive.Aux[T, F], F: Shrink[F[T]])
       : Shrink[T] =
-    Shrink(t => shrinkCorecursiveShrink[T, F].shrink(t) ++ recursiveShrink[T, F].shrink(t))
+    Shrink(t => shrinkCorecursiveShrink[T, F].shrink(t) |+| recursiveShrink[T, F].shrink(t))
 
   implicit def fixShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Fix[F]] =
     corecursiveShrink[Fix[F], F]

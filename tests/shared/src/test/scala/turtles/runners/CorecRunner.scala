@@ -19,9 +19,9 @@ package turtles.runners
 import turtles._
 
 import org.specs2.matcher._
-import scalaz._
+import cats._
 
 abstract class CorecRunner[M[_], F[_], A] {
-  def run[T: Equal: Show](implicit T: Birecursive.Aux[T, F])
+  def run[T: Eq: Show](implicit T: Birecursive.Aux[T, F])
       : A => MatchResult[M[T]]
 }

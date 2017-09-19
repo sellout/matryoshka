@@ -16,12 +16,13 @@
 
 package turtles.exp
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.implicits._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
-import scalaz._, Scalaz._
 import scalaz.scalacheck.ScalaCheckBinding._
 
 sealed abstract class Exp[A]
@@ -64,11 +65,11 @@ object Exp {
 
   // NB: an unusual definition of equality, in that only the first 3 characters
   //     of variable names are significant. This is to distinguish it from `==`
-  //     as well as from a derivable Equal.
-  implicit val equal: Delay[Equal, Exp] = new Delay[Equal, Exp] {
-    def apply[α](eq: Equal[α]) =
-      Equal.equal[Exp[α]] {
-        case (Num(v1), Num(v2))                 => v1 ≟ v2
+  //     as well as from a derivable Eq.
+  implicit val equal: Delay[Eq, Exp] = new Delay[Eq, Exp] {
+    def apply[α](eq: Eq[α]) =
+      Eq.equal[Exp[α]] {
+        case (Num(v1), Num(v2))                 => v1 === v2
         case (Mul(a1, b1), Mul(a2, b2))         =>
           eq.equal(a1, a2) && eq.equal(b1, b2)
         case (Var(s1), Var(s2))                 =>
@@ -104,7 +105,7 @@ object Exp {
       }
   }
 
-  implicit val unzip = new Unzip[Exp] {
+  implicit val unzip = new Alternative[Exp] {
     def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
   }
 }

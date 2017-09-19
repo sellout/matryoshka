@@ -16,7 +16,7 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.data.Fix
 
 package object exp2 {

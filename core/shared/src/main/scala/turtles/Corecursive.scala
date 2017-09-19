@@ -16,7 +16,12 @@
 
 package turtles
 
-import scalaz._, Scalaz._
+import slamdata.Predef.{Eq => _, _}
+import turtles.derived._
+
+import cats._
+import cats.free._
+import cats.implicits._
 
 /** Unfolds for corecursive data types. */
 trait Corecursive[T] extends Based[T] { self =>
@@ -32,69 +37,69 @@ trait Corecursive[T] extends Based[T] { self =>
     (f: CoalgebraM[M, Base, A])
     (implicit BT: Traverse[Base])
       : M[T] =
-    hyloM[M, Base, A, T](a)(embed(_).point[M], f)
+    hyloM[M, Base, A, T](a)(embed(_).pure[M], f)
 
   def gana[N[_]: Monad, A]
     (a: A)
     (k: DistributiveLaw[N, Base], f: GCoalgebra[N, Base, A])
     (implicit BF: Functor[Base])
       : T =
-    ana[N[A]](a.point[N])(na => k(na.map(f)).map(_.join))
+    ana[N[A]](a.pure[N])(na => k(na.map(f)).map(_.flatten))
 
   def ganaM[N[_]: Monad: Traverse, M[_]: Monad, A](
     a: A)(
     k: DistributiveLaw[N, Base], f: GCoalgebraM[N, M, Base, A])(
     implicit BT: Traverse[Base]):
       M[T] =
-    ghyloM[Id, N, M, Base, A, T](a)(distCata, k, embed(_).point[M], f)
+    ghyloM[Id, N, M, Base, A, T](a)(distCata, k, embed(_).pure[M], f)
 
   def elgotAna[N[_]: Monad, A](
     a: A)(
     k: DistributiveLaw[N, Base], ψ: ElgotCoalgebra[N, Base, A])(
     implicit BF: Functor[Base])
       : T =
-    ana(ψ(a))(k(_) ∘ (_ >>= ψ))
+    ana(ψ(a))(k(_).map(_ >>= ψ))
 
   /** An unfold that can short-circuit certain sections.
     */
-  def apo[A](a: A)(f: GCoalgebra[T \/ ?, Base, A])(implicit BF: Functor[Base])
+  def apo[A](a: A)(f: GCoalgebra[Either[T, ?], Base, A])(implicit BF: Functor[Base])
       : T =
-    hylo[λ[α => Base[T \/ α]], A, T](
+    hylo[λ[α => Base[Either[T, α]]], A, T](
       a)(
       fa => embed(fa.map(_.merge)), f)(
-      BF.compose[T \/ ?])
+      BF.compose[Either[T, ?]])
 
   def elgotApo[A]
     (a: A)
-    (f: ElgotCoalgebra[T \/ ?, Base, A])
+    (f: ElgotCoalgebra[Either[T, ?], Base, A])
     (implicit BF: Functor[Base])
       : T =
-    hylo[λ[α => T \/ Base[α]], A, T](
+    hylo[λ[α => Either[T, Base[α]]], A, T](
       a)(
       _.map(embed).merge, f)(
-      \/.DisjunctionInstances1 compose BF)
+      Functor[Either[T, ?]] compose BF)
 
   /** An unfold that can handle sections with a secondary unfold.
     */
   def gapo[A, B]
     (a: A)
-    (ψ0: Coalgebra[Base, B], ψ: GCoalgebra[B \/ ?, Base, A])
+    (ψ0: Coalgebra[Base, B], ψ: GCoalgebra[Either[B, ?], Base, A])
     (implicit BF: Functor[Base])
       : T =
-    hylo[λ[α => Base[B \/ α]], A, T](
+    hylo[λ[α => Base[Either[B, α]]], A, T](
       a)(
       fa => embed(fa.map(_.leftMap(ana(_)(ψ0)).merge)), ψ)(
-      BF.compose[B \/ ?])
+      BF.compose[Either[B, ?]])
 
   def apoM[M[_]: Monad, A](
     a: A)(
-    f: GCoalgebraM[T \/ ?, M, Base, A])(
+    f: GCoalgebraM[Either[T, ?], M, Base, A])(
     implicit BT: Traverse[Base]):
       M[T] =
-    hyloM[M, λ[α => Base[T \/ α]], A, T](
+    hyloM[M, λ[α => Base[Either[T, α]]], A, T](
       a)(
-      fa => embed(fa ∘ (_.merge)).point[M], f)(
-      Monad[M], BT.compose[T \/ ?])
+      fa => embed(fa.map(_.merge)).pure[M], f)(
+      Monad[M], BT.compose[Either[T, ?]])
 
   def futu[A]
     (a: A)
@@ -131,13 +136,13 @@ trait Corecursive[T] extends Based[T] { self =>
 
   def transApo[U, G[_]: Functor]
     (u: U)
-    (f: CoalgebraicGTransform[T \/ ?, U, G, Base])
+    (f: CoalgebraicGTransform[Either[T, ?], U, G, Base])
     (implicit U: Recursive.Aux[U, G], BF: Functor[Base])
       : T = {
-    implicit val nested: Functor[λ[α => Base[T \/ α]]] =
-      BF.compose[T \/ ?]
+    implicit val nested: Functor[λ[α => Base[Either[T, α]]]] =
+      BF.compose[Either[T, ?]]
 
-    transHylo[U, G, λ[α => Base[T \/ α]], T, Base](u)(_ ∘ (_.merge), f)
+    transHylo[U, G, λ[α => Base[Either[T, α]]], T, Base](u)(_.map(_.merge), f)
   }
 
   def transFutu[U, G[_]: Functor]

@@ -16,11 +16,12 @@
 
 package turtles.patterns
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.implicits._
 
-import scalaz._, Scalaz._
+import cats._
+import cats.implicits._
 import simulacrum._
 
 @typeclass trait Diffable[F[_]] { self =>
@@ -51,7 +52,7 @@ import simulacrum._
           Removed[T, F, T[Diff[T, F, ?]]](l).embed)(
           l.paraMerga(_)(diff[T, F])))
 
-  // TODO: create something like Equals, but that overrides G[F[_]] (where G
+  // TODO: create something like Eq, but that overrides G[F[_]] (where G
   //       implements Traverse) to always be equal. This should allow us to
   //       distinguish between, say, two things containing a List[F[_]] that
   //       only differ on the length of the list. So we can make them `Similar`

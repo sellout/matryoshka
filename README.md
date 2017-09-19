@@ -62,13 +62,13 @@ final case class Mul[A](l: A, r: A)  extends Expr[A]
 
 This abstract class generally allows a `Traverse` instance (or at least a `Functor` instance). Then you use one of the fixed point type constructors below to regain your recursive type.
 
-You may also want instances for `Delay[Equal, ?]`, `Delay[Order, ?]`, and `Delay[Show, ?]` (which are very similar to their non-`Delay` equivalents) to get instances for fixed points of your functor.
+You may also want instances for `Delay[Eq, ?]`, `Delay[Order, ?]`, and `Delay[Show, ?]` (which are very similar to their non-`Delay` equivalents) to get instances for fixed points of your functor.
 
 ### Fixpoint Types
 
 These types take a one-arg type constructor and provide a recursive form of it.
 
-All of these types have instances for `Recursive`, `Corecursive`, `FunctorT`, `TraverseT`, `Equal`, `Show`, and `Arbitrary` type classes unless otherwise noted.
+All of these types have instances for `Recursive`, `Corecursive`, `Eq`, `Show`, and `Arbitrary` type classes unless otherwise noted.
 
 - `Fix` – This is the simplest fixpoint type, implemented with general recursion.
 - `Mu` – This is for inductive (finite) recursive structures, models the concept of “data”, aka, the “least fixed point”.
@@ -90,7 +90,7 @@ Here is a very simple example of an algebra (`eval`) and how to apply it to a re
 
 ```scala
 // we will need a Functor[Expr] in order to call embed bellow
-implicit val exprFunctor = new scalaz.Functor[Expr] {
+implicit val exprFunctor = new cats.Functor[Expr] {
   override def map[A, B](fa: Expr[A])(f: (A) => B) = fa match{
     case Num(value) => Num[B](value)
     case Mul(l, r) => Mul(f(l), f(r))

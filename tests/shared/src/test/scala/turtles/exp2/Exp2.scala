@@ -16,7 +16,7 @@
 
 package turtles.exp2
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 
 import org.scalacheck._
@@ -62,11 +62,11 @@ object Exp2 {
       }
   }
 
-  implicit val equal: Delay[Equal, Exp2] = new Delay[Equal, Exp2] {
-    def apply[α](eq: Equal[α]) =
-      Equal.equal[Exp2[α]] {
+  implicit val eq: Delay[Eq, Exp2] = new Delay[Eq, Exp2] {
+    def apply[α](eq: Eq[α]) =
+      Eq.equal[Exp2[α]] {
         case (Const(), Const())       => true
-        case (Num2(v1), Num2(v2))     => v1 ≟ v2
+        case (Num2(v1), Num2(v2))     => v1 === v2
         case (Single(a1), Single(a2)) => eq.equal(a1, a2)
         case _                        => false
       }

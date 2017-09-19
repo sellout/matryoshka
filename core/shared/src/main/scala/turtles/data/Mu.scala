@@ -20,7 +20,8 @@ import turtles._
 
 import scala.Unit
 
-import scalaz._, Scalaz._
+import cats._
+import cats.implicits._
 
 /** This is for inductive (finite) recursive structures, models the concept of
   * “data”, aka, the “least fixed point”.
@@ -31,7 +32,7 @@ object Mu {
   implicit def birecursiveT: BirecursiveT[Mu] = new BirecursiveT[Mu] {
     // FIXME: ugh, shouldn’t have to redefine `lambek` in here?
     def projectT[F[_]: Functor](t: Mu[F]) =
-      cataT[F, F[Mu[F]]](t)(_ ∘ embedT[F])
+      cataT[F, F[Mu[F]]](t)(_.map(embedT[F]))
     override def cataT[F[_]: Functor, A](t: Mu[F])(f: Algebra[F, A]) = t.unMu(f)
 
     def embedT[F[_]: Functor](t: F[Mu[F]]) =
@@ -40,7 +41,7 @@ object Mu {
       })
   }
 
-  implicit val equalT: EqualT[Mu] = EqualT.recursiveT
+  implicit val equalT: EqT[Mu] = EqT.recursiveT
 
   // TODO: Use OrderT
   implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]]): Order[Mu[F]] =

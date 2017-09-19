@@ -16,7 +16,7 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles.data._
 import turtles.exp._
 import turtles.exp2._
@@ -219,7 +219,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           num(1),
           new CorecRunner[Id, Exp, Fix[Exp]] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.transAna[T](addOneƒ) must equal(num(2).convertTo[T])
           })
       }
@@ -228,7 +228,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           mul(num(1), num(2)),
           new CorecRunner[Id, Exp, Fix[Exp]] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.transAna[T](addOneƒ) must equal(mul(num(2), num(3)).convertTo[T])
           })
       }
@@ -304,7 +304,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           num(1),
           new CorecRunner[Id, Exp, Fix[Exp]] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.transPostpro[T](NaturalTransformation.refl, addOneƒ) must
                 equal(num(2).convertTo[T])
           })
@@ -314,7 +314,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           mul(num(1), mul(num(12), num(8))),
           new CorecRunner[Id, Exp, Fix[Exp]] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.transPostpro[T](MinusThree, addOneƒ) must
                 equal(mul(num(-1), mul(num(7), num(3))).convertTo[T])
           })
@@ -324,7 +324,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           num2(1),
           new CorecRunner[Id, Exp, Fix[Exp2]] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.transPostpro[T](MinusThree, addOneExp2Expƒ) must
                 equal(num(2).convertTo[T])
           })
@@ -388,7 +388,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(5), num(2)),
           new RecRunner[Exp, (Int, List[Int])] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.cata(AlgebraZip[Exp].zip(eval, findConstants)) must
+              _.cata(AlgebraCartesian[Exp].zip(eval, findConstants)) must
                 equal((10, List(5, 2)))
           })
       }
@@ -406,14 +406,14 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     }
 
     "coelgot" >> {
-      "behave like cofCata ⋘ attributeAna" >> prop { (i: Int) =>
+      "behave like cofCata <<< attributeAna" >> prop { (i: Int) =>
         i.coelgot(eval.generalizeElgot[(Int, ?)], extractFactors) must equal(
           i.ana[Cofree[Exp, Int]](attributeCoalgebra(extractFactors)).cata(liftT(eval.generalizeElgot[(Int, ?)])))
       }
     }
 
     "elgot" >> {
-      "behave like interpCata ⋘ freeAna" >> prop { (i: Int) =>
+      "behave like interpCata <<< freeAna" >> prop { (i: Int) =>
         i.elgot(eval, extractFactors.generalizeElgot[Int \/ ?]) must equal(
           i.ana[Free[Exp, Int]](runT(extractFactors.generalizeElgot[Int \/ ?])).cata(patterns.recover(eval)))
       }
@@ -451,7 +451,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     val generateTerm: ElgotCoalgebra[Int \/ ?, Exp, (Int, Int)] = {
       case (n, 0)     if n <= 0      => Num(42).right
       case (n, bound) if n <= 0      => bound.left
-      case (n, bound) if (n % 2) ≟ 0 => Lambda(Symbol("x" + bound), (n - 1, bound + 1)).right
+      case (n, bound) if (n % 2) === 0 => Lambda(Symbol("x" + bound), (n - 1, bound + 1)).right
       case (n, bound)                => \/-(Mul((n / 2, bound), ((n / 2) - 1, bound)))
     }
 
@@ -730,7 +730,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
             testCorec(
               12,
               new CorecRunner[Option, Exp, Int] {
-                def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+                def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
                   _.anaM[T](extractFactorsM) must
                     equal(mul(num(2), mul(num(2), num(3))).convertTo[T].some)
               })
@@ -739,7 +739,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
             testCorec(
               10,
               new CorecRunner[Option, Exp, Int] {
-                def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+                def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
                   _.anaM[T](extractFactorsM) must beNone
               })
           }
@@ -748,7 +748,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           testCorec(
             i,
             new CorecRunner[Id, Exp, Int] {
-              def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+              def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
                 _.anaM[T][Id, Exp](extractFactors) must
                   equal(i.ana[T](extractFactors))
             })
@@ -761,7 +761,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           i,
           new CorecRunner[Id, Exp, Int] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.gana[T][Id, Exp](distAna, extractFactors) must
                 equal(i.ana[T](extractFactors))
           })
@@ -771,7 +771,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           i,
           new CorecRunner[Id, Exp, Int] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.elgotAna[T][Id, Exp](distAna, extractFactors) must
                 equal(i.ana[T](extractFactors))
           })
@@ -936,7 +936,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           8,
           new CorecRunner[Id, Exp, Int] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.futu[T](extract2and3) must equal(mul(num(2), mul(num(2), num(2))).convertTo[T])
           })
       }
@@ -945,7 +945,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           81,
           new CorecRunner[Id, Exp, Int] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.futu[T](extract2and3) must
                 equal(mul(num(3), num(27)).convertTo[T])
           })
@@ -955,7 +955,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
         testCorec(
           324,
           new CorecRunner[Id, Exp, Int] {
-            def run[T: Equal: Show](implicit T: Birecursive.Aux[T, Exp]) =
+            def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
               _.futu[T](extract2and3) must
                 equal(mul(num(2), mul(num(2), mul(num(3), num(27)))).convertTo[T])
           })

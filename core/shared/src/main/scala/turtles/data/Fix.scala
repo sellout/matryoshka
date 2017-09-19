@@ -20,7 +20,7 @@ import turtles._
 
 import scala.Unit
 
-import scalaz._
+import cats._
 
 /** This is the simplest fixpoint type, implemented with general recursion.
   */
@@ -33,7 +33,7 @@ object Fix {
     def embedT[F[_]: Functor](t: F[Fix[F]]) = Fix(t)
   }
 
-  implicit val equalT: EqualT[Fix] = EqualT.recursiveT
+  implicit val equalT: EqT[Fix] = EqT.recursiveT
 
   // TODO: Use OrderT
   implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]])

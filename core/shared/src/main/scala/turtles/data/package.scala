@@ -18,7 +18,9 @@ package turtles
 
 import turtles.implicits._
 
-import scalaz._, Scalaz._
+import cats._
+import cats.free._
+import cats.implicits._
 
 /** This packages contains fixed-point operators as well as instances of
   * recursion schemes for various extant data types.
@@ -29,13 +31,10 @@ import scalaz._, Scalaz._
   */
 package object data
     extends CofreeInstances
-    with DisjunctionInstances
     with EitherInstances
     with FreeInstances
     with IdInstances
-    with IListInstances
     with ListInstances
-    with MaybeInstances
     with NonEmptyListInstances
     with OptionInstances {
 
@@ -48,5 +47,5 @@ package object data
     (f: GAlgebra[(T, ?), F, A])
     (implicit T: Corecursive.Aux[T, F])
       : Algebra[F, Cofree[F, A]] =
-    fa => Cofree(f(fa ∘ (x => (x.cata[T](_.lower.embed), x.head))), fa)
+    fa => Cofree(f(fa.map(x => (x.cata[T](_.lower.embed), x.head))), Now(fa))
 }

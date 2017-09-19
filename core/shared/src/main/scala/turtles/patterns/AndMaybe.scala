@@ -16,11 +16,12 @@
 
 package turtles.patterns
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 
+import cats._
+import cats.implicits._
 import monocle.Iso
-import scalaz._, Scalaz._
 
 sealed abstract class AndMaybe[A, B] {
   def head: A = this match {
@@ -29,7 +30,7 @@ sealed abstract class AndMaybe[A, B] {
   }
 
   def tailOption: Option[B] = this match {
-    case Indeed(_, b) => some(b)
+    case Indeed(_, b) => b.some
     case Only(_)      => none
   }
 }
@@ -43,32 +44,44 @@ object AndMaybe extends AndMaybeInstances {
   } (envt => envt.lower.fold[AndMaybe[A, B]](Only(envt.ask))(Indeed(envt.ask, _)))
 
   def find[A](p: A => Boolean): Algebra[AndMaybe[A, ?], Option[A]] =
-    l => if (p(l.head)) some(l.head) else l.tailOption.join
+    l => if (p(l.head)) l.head.some else l.tailOption.flatten
 }
 
 sealed abstract class AndMaybeInstances {
-  implicit def traverse[A]: Traverse[AndMaybe[A, ?]] =
-    bitraverse.rightTraverse[A]
-
   implicit val bitraverse: Bitraverse[AndMaybe] =
     new Bitraverse[AndMaybe] {
-      def bitraverseImpl[G[_]: Applicative, A, B, C, D](
+      def bitraverse[G[_]: Applicative, A, B, C, D](
         fab: AndMaybe[A, B])(
-        f: A => G[C], g: B => G[D]
-      ) =
+        f: A => G[C], g: B => G[D]) =
         fab match {
-          case Indeed(a, b) => (f(a) |@| g(b))(Indeed(_, _))
-          case Only(a)    => f(a) map (Only(_))
+          case Indeed(a, b) => (f(a), g(b)).mapN(Indeed(_, _))
+          case Only(a)      => f(a) map (Only(_))
+        }
+
+      def bifoldLeft[A, B, C](
+        fab: AndMaybe[A, B], c: C)(
+        f: (C, A) => C, g: (C, B) => C) =
+        fab match {
+          case Indeed(a, b) => g(f(c, a), b)
+          case Only(a)      => f(c, a)
+        }
+
+      def bifoldRight[A, B, C](
+        fab: AndMaybe[A, B], c: Eval[C])(
+        f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]) =
+        fab match {
+          case Indeed(a, b) => f(a, g(b, c))
+          case Only(a)      => f(a, c)
         }
     }
 
-  implicit def equal[A: Equal]: Delay[Equal, AndMaybe[A, ?]] =
-    new Delay[Equal, AndMaybe[A, ?]] {
-      def apply[B](eql: Equal[B]) = {
-        implicit val eqlB: Equal[B] = eql
-        Equal.equalBy {
-          case Indeed(a, b) => (a, b).right[A]
-          case Only(a)    => a.left[(A, B)]
+  implicit def equal[A: Eq]: Delay[Eq, AndMaybe[A, ?]] =
+    new Delay[Eq, AndMaybe[A, ?]] {
+      def apply[B](eql: Eq[B]) = {
+        implicit val eqlB: Eq[B] = eql
+        Eq.by {
+          case Indeed(a, b) => (a, b).asRight[A]
+          case Only(a)      => a.asLeft[(A, B)]
         }
       }
     }
@@ -77,8 +90,8 @@ sealed abstract class AndMaybeInstances {
     new Delay[Show, AndMaybe[A, ?]] {
       def apply[B](show: Show[B]) =
         Show.show {
-          case Indeed(a, b) => a.show ++ Cord("::") ++ show.show(b)
-          case Only(a)    => a.show
+          case Indeed(a, b) => a.show |+| "::" |+| show.show(b)
+          case Only(a)      => a.show
         }
     }
 }

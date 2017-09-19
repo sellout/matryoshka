@@ -16,14 +16,15 @@
 
 package turtles.scalacheck
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.data._
 import turtles.implicits._
 import turtles.patterns._
 
+import cats._
+import cats.free._
 import org.scalacheck._
-import scalaz._
 
 trait CogenInstancesʹ {
   implicit def delayCogen[F[_], A](implicit F: Delay[Cogen, F], A: Cogen[A]): Cogen[F[A]] =

@@ -20,7 +20,8 @@ import turtles._
 
 import scala.Unit
 
-import scalaz._, Scalaz._
+import cats._
+import cats.implicits._
 
 /** This is for coinductive (potentially infinite) recursive structures, models
   * the concept of “codata”, aka, the “greatest fixed point”.
@@ -43,11 +44,11 @@ object Nu {
     def projectT[F[_]: Functor](t: Nu[F]) = t.unNu(t.a).map(Nu(t.unNu, _))
 
     // FIXME: ugh, shouldn’t have to redefine `colambek` in here?
-    def embedT[F[_]: Functor](t: F[Nu[F]]) = anaT(t)(_ ∘ projectT[F])
+    def embedT[F[_]: Functor](t: F[Nu[F]]) = anaT(t)(_.map(projectT[F]))
     override def anaT[F[_]: Functor, A](a: A)(f: A => F[A]) = Nu(f, a)
   }
 
-  implicit val equalT: EqualT[Nu] = EqualT.recursiveT
+  implicit val equalT: EqT[Nu] = EqT.recursiveT
 
   // TODO: Use OrderT
   implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]]): Order[Nu[F]] =

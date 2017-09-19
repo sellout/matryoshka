@@ -19,22 +19,24 @@ package turtles.data
 import turtles._
 import turtles.patterns.EnvT
 
-import scalaz._, Scalaz._
+import cats._
+import cats.free._
+import cats.implicits._
 
 trait CofreeInstances {
   implicit def cofreeBirecursive[F[_], A]
       : Birecursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
     Birecursive.algebraIso(
-      t => Cofree(t.ask, t.lower),
-      t => EnvT((t.head, t.tail)))
+      t => Cofree(t.ask, Later(t.lower)),
+      t => EnvT((t.head, t.tail.value)))
 
-  implicit def cofreeEqual[F[_]: Traverse](implicit F: Delay[Equal, F]):
-      Delay[Equal, Cofree[F, ?]] =
-    new Delay[Equal, Cofree[F, ?]] {
-      def apply[A](eq: Equal[A]) = {
-        implicit val envtʹ: Delay[Equal, EnvT[A, F, ?]] = EnvT.equal(eq, F)
+  implicit def cofreeEq[F[_]: Traverse](implicit F: Delay[Eq, F]):
+      Delay[Eq, Cofree[F, ?]] =
+    new Delay[Eq, Cofree[F, ?]] {
+      def apply[A](eq: Eq[A]) = {
+        implicit val envtʹ: Delay[Eq, EnvT[A, F, ?]] = EnvT.equal(eq, F)
 
-        Birecursive.equal[Cofree[F, A], EnvT[A, F, ?]]
+        Birecursive.biEq[Cofree[F, A], EnvT[A, F, ?]]
       }
     }
 

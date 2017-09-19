@@ -16,15 +16,18 @@
 
 package turtles.scalacheck
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.data._
 import turtles.implicits._
 import turtles.patterns._
 
+import cats._
+import cats.data._
+import cats.free._
+import cats.implicits._
 import org.scalacheck._
-import scalaz._, Scalaz._
-import scalaz.scalacheck.ScalaCheckBinding._
+import org.scalacheck.support.cats._
 
 trait ArbitraryInstancesʹ {
   implicit def delayArbitrary[F[_], A](
@@ -43,7 +46,7 @@ trait ArbitraryInstances extends ArbitraryInstancesʹ {
         if (size <= 0)
           Gen.fail[T]
         else
-          Gen.resize(size - 1, corecursiveArbitrary[T, F].arbitrary))).arbitrary ∘ (_.embed)))
+          Gen.resize(size - 1, corecursiveArbitrary[T, F].arbitrary))).arbitrary.map(_.embed)))
 
   implicit def fixArbitrary[F[_]: Functor](implicit fArb: Delay[Arbitrary, F]): Arbitrary[Fix[F]] =
     corecursiveArbitrary[Fix[F], F]
@@ -58,35 +61,34 @@ trait ArbitraryInstances extends ArbitraryInstancesʹ {
     implicit F: Delay[Arbitrary, F]):
       Delay[Arbitrary, CoEnv[E, F, ?]] =
     new Delay[Arbitrary, CoEnv[E, F, ?]] {
-      def apply[α](arb: Arbitrary[α]) =
-        // NB: Not sure why this version doesn’t work.
-        // Arbitrary.arbitrary[E \/ F[α]] ∘ (CoEnv(_))
-        Arbitrary(Gen.oneOf(
-          Arbitrary.arbitrary[E].map(_.left),
-          F(arb).arbitrary.map(_.right))) ∘ (CoEnv(_))
+      def apply[α](arb: Arbitrary[α]) = {
+        implicit val a = arb
+
+        Arbitrary(Arbitrary.arbitrary[Either[E, F[α]]].map(CoEnv(_)))
+      }
     }
 
   implicit def envTArbitrary[E: Arbitrary, F[_]](implicit F: Delay[Arbitrary, F]): Delay[Arbitrary, EnvT[E, F, ?]] =
     new Delay[Arbitrary, EnvT[E, F, ?]] {
       def apply[A](arb: Arbitrary[A]) =
         Arbitrary(
-          (Arbitrary.arbitrary[E] ⊛ F(arb).arbitrary)((e, f) => EnvT((e, f))))
+          (Arbitrary.arbitrary[E], F(arb).arbitrary).mapN((e, f) => EnvT((e, f))))
     }
 
   implicit def listFArbitrary[A: Arbitrary]: Delay[Arbitrary, ListF[A, ?]] =
     new Delay[Arbitrary, ListF[A, ?]] {
       def apply[B](arb: Arbitrary[B]) =
         Arbitrary(Gen.oneOf[ListF[A, B]](
-          NilF[A, B]().point[Gen],
-          (Arbitrary.arbitrary[A] ⊛ arb.arbitrary)(ConsF[A, B])))
+          NilF[A, B]().pure[Gen],
+          (Arbitrary.arbitrary[A], arb.arbitrary).mapN(ConsF[A, B])))
     }
 
   implicit def nelFArbitrary[A: Arbitrary]: Delay[Arbitrary, AndMaybe[A, ?]] =
     new Delay[Arbitrary, AndMaybe[A, ?]] {
       def apply[B](arb: Arbitrary[B]) =
         Arbitrary(Gen.oneOf[AndMaybe[A, B]](
-          (Arbitrary.arbitrary[A] ⊛ arb.arbitrary)(Indeed[A, B]),
-          Arbitrary.arbitrary[A] ∘ (Only[A, B](_))))
+          (Arbitrary.arbitrary[A], arb.arbitrary).mapN(Indeed[A, B]),
+          Arbitrary.arbitrary[A].map(Only[A, B](_))))
     }
 
   implicit def cofreeArbitrary[F[_]: Functor, A]
@@ -103,23 +105,23 @@ trait ArbitraryInstances extends ArbitraryInstancesʹ {
     new Delay[Arbitrary, Option] {
       def apply[A](arb: Arbitrary[A]) =
         Arbitrary(Gen.frequency(
-          ( 1, None.point[Gen]),
+          ( 1, None.pure[Gen]),
           (75, arb.arbitrary.map(_.some))))
     }
 
-  implicit def eitherArbitrary[A: Arbitrary]: Delay[Arbitrary, A \/ ?] =
-    new Delay[Arbitrary, A \/ ?] {
+  implicit def eitherArbitrary[A: Arbitrary]: Delay[Arbitrary, Either[A, ?]] =
+    new Delay[Arbitrary, Either[A, ?]] {
       def apply[B](arb: Arbitrary[B]) =
         Arbitrary(Gen.oneOf(
-          Arbitrary.arbitrary[A].map(-\/(_)),
-          arb.arbitrary.map(\/-(_))))
+          Arbitrary.arbitrary[A].map(Left(_)),
+          arb.arbitrary.map(Right(_))))
     }
 
   implicit def nonEmptyListArbitrary: Delay[Arbitrary, NonEmptyList] =
     new Delay[Arbitrary, NonEmptyList] {
       def apply[A](arb: Arbitrary[A]) =
-        Arbitrary((arb.arbitrary ⊛ Gen.listOf[A](arb.arbitrary))((h, t) =>
-          NonEmptyList.nel(h, t.toIList)))
+        Arbitrary((arb.arbitrary, Gen.listOf[A](arb.arbitrary)).mapN(
+          NonEmptyList(_, _)))
     }
 }
 

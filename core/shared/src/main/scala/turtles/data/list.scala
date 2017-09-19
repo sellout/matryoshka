@@ -16,7 +16,7 @@
 
 package turtles.data
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.patterns._
 

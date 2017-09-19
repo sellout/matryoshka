@@ -16,15 +16,16 @@
 
 package turtles.instances.fixedpoint
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.implicits._
 import turtles.scalacheck.arbitrary._
 
+import cats._
+import cats.implicits._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.specs2.scalaz.{ScalazMatchers}
-import scalaz._, Scalaz._
 
 class StreamSpec extends Specification with ScalaCheck with ScalazMatchers {
   /** Infinite sequence of Fibonacci numbers (at least until they overflow

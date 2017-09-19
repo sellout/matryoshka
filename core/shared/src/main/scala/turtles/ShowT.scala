@@ -20,15 +20,12 @@ import turtles.implicits._
 
 import java.lang.String
 
-import scalaz._
+import cats._
+import cats.implicits._
 import simulacrum._
 
 @typeclass trait ShowT[T[_[_]]] {
-  def show[F[_]: Functor](tf: T[F])(implicit del: Delay[Show, F]): Cord =
-    Cord(shows(tf))
-
-  def shows[F[_]: Functor](tf: T[F])(implicit del: Delay[Show, F]): String =
-    show(tf).toString
+  def show[F[_]: Functor](tf: T[F])(implicit del: Delay[Show, F]): String
 
   def showT[F[_]: Functor](delay: Delay[Show, F]): Show[T[F]] =
     Show.show[T[F]](show[F](_)(Functor[F], delay))
@@ -37,6 +34,6 @@ import simulacrum._
 object ShowT {
   def recursiveT[T[_[_]]: RecursiveT]: ShowT[T] = new ShowT[T] {
     override def show[F[_]: Functor](tf: T[F])(implicit del: Delay[Show, F]) =
-      tf.cata(del(Cord.CordShow).show)
+      tf.cata(del(Show[String]).show)
   }
 }

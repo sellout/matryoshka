@@ -16,16 +16,17 @@
 
 package turtles.patterns
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
 import turtles._
 import turtles.data.Fix
 import turtles.exp._
 import turtles.scalacheck.arbitrary._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import scalaz._, Scalaz._
 import scalaz.scalacheck.ScalazProperties._
 
 class PotentialFailureSpec extends Specification with ScalaCheck {

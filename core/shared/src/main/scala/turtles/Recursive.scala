@@ -16,11 +16,16 @@
 
 package turtles
 
-import slamdata.Predef._
+import slamdata.Predef.{Eq => _, _}
+import turtles.derived._
 import turtles.implicits._
 import turtles.patterns._
 
-import scalaz._, Scalaz._
+import cats._
+import cats.data._
+import cats.free._
+import cats.implicits._
+import newts.syntax.all._
 
 /** Folds for recursive data types. */
 trait Recursive[T] extends Based[T] { self =>
@@ -45,14 +50,14 @@ trait Recursive[T] extends Based[T] { self =>
     (k: DistributiveLaw[Base, W], g: GAlgebra[W, Base, A])
     (implicit BF: Functor[Base])
       : A =
-    cata[W[A]](t)(fwa => k(fwa.map(_.cojoin)).map(g)).copoint
+    cata[W[A]](t)(fwa => k(fwa.map(_.coflatten)).map(g)).extract
 
   def gcataM[W[_]: Comonad: Traverse, M[_]: Monad, A]
     (t: T)
     (w: DistributiveLaw[Base, W], g: GAlgebraM[W, M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
-    cataM[M, W[A]](t)(fwa => w(fwa.map(_.cojoin)).traverse(g)) ∘ (_.copoint)
+    cataM[M, W[A]](t)(fwa => w(fwa.map(_.coflatten)).traverse(g)).map(_.extract)
 
   /** A catamorphism generalized with a comonad outside the functor. */
   def elgotCata[W[_]: Comonad, A](
@@ -60,20 +65,20 @@ trait Recursive[T] extends Based[T] { self =>
     k: DistributiveLaw[Base, W], g: ElgotAlgebra[W, Base, A])
     (implicit BF: Functor[Base])
       : A =
-    g(cata[W[Base[A]]](t)(fwfa => k(fwfa ∘ (_.cobind(g)))))
+    g(cata[W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatMap(g)))))
 
   def elgotCataM[W[_]: Comonad : Traverse, M[_]: Monad, A]
     (t: T)
     (k: DistributiveLaw[Base, (M ∘ W)#λ], g: ElgotAlgebraM[W, M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
-    cataM[M, W[Base[A]]](t)(fwfa => k(fwfa ∘ (_.cojoin.traverse(g)))) >>= g
+    cataM[M, W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatten.traverse(g)))) >>= g
 
   def para[A](t: T)(f: GAlgebra[(T, ?), Base, A])(implicit BF: Functor[Base])
       : A =
     hylo[λ[α => Base[(T, α)]], T, A](
       t)(
-      f, project(_) ∘ (_.squared))(
+      f, project(_).map(a => (a, a)))(
       BF.compose[(T, ?)])
 
   def elgotPara[A]
@@ -84,7 +89,7 @@ trait Recursive[T] extends Based[T] { self =>
     hylo[λ[α => (T, Base[α])], T, A](
       t)(
       f, t => (t, project(t)))(
-      tuple2Instance compose BF)
+      Functor[(T, ?)] compose BF)
 
   def paraM[M[_]: Monad, A](
     t: T)(
@@ -108,7 +113,7 @@ trait Recursive[T] extends Based[T] { self =>
     gcataM[(M[B], ?), M, A](
       t)(
       distZygo(_.sequence >>= f),
-        _.traverse(Bitraverse[(?, ?)].leftTraverse.sequence[M, B]) >>= g)
+        _.traverse(_.swap.sequence.map(_.swap)) >>= g)
 
   def elgotZygo[A, B]
     (t: T)
@@ -145,7 +150,7 @@ trait Recursive[T] extends Based[T] { self =>
     (f: GAlgebra[(A, ?), Base, B], g: GAlgebra[(B, ?), Base, A])
     (implicit BF: Functor[Base])
       : A =
-    g(project(t) ∘ (x => (mutu(x)(g, f), mutu(x)(f, g))))
+    g(project(t).map(x => (mutu(x)(g, f), mutu(x)(f, g))))
 
   def histo[A]
     (t: T)
@@ -171,25 +176,27 @@ trait Recursive[T] extends Based[T] { self =>
   def gcataZygo[W[_]: Comonad, A, B]
     (t: T)
     (k: DistributiveLaw[Base, W], f: GAlgebra[W, Base, B], g: GAlgebra[(B, ?), Base, A])
-    (implicit BF: Functor[Base], BU: Unzip[Base]) =
+    (implicit BF: Functor[Base], BU: Alternative[Base]) =
     gcata[(W[B], ?), A](
       t)(
-      distZygo(fwa => k(fwa.map(_.cojoin)).map(f)),
-        fwa => g(fwa.map(_.leftMap(_.copoint))))
+      distZygo(fwa => k(fwa.map(_.coflatten)).map(f)),
+        fwa => g(fwa.map(_.leftMap(_.extract))))
 
-  // TODO: Remove `Unzip` constraint
   def paraZygo[A, B](
     t: T)(
     f: GAlgebra[(T, ?), Base, B],
     g: GAlgebra[(B, ?), Base, A])(
-    implicit BF: Functor[Base], BU: Unzip[Base]):
+    implicit BF: Functor[Base]):
       A = {
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
-    def h(t: T): (B, A) =
-      (project(t) ∘ { x =>
+    def h(t: T): (B, A) = {
+      val tmp = project(t).map { x =>
         val (b, a) = h(x)
         ((x, b), (b, a))
-      }).unfzip.bimap(f, g)
+      }
+
+      (tmp.map(_._1), tmp.map(_._2)).bimap(f, g)
+    }
 
     h(t)._2
   }
@@ -204,18 +211,18 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     hylo[λ[α => OptionT[(T, T, ?), Base[α]]], (T, T), A](
       (t, that))(
-      fa => f.tupled(fa.run),
+      fa => f.tupled(fa.value),
         { case (a, b) => OptionT((a, b, project(a).merge(project(b)))) })(
-      OptionT.optionTFunctor[(T, T, ?)] compose BF)
+      Functor[OptionT[(T, T, ?), ?]] compose BF)
 
   def isLeaf(t: T)(implicit BF: Functor[Base], B: Foldable[Base]): Boolean =
-    project(t).foldRight(true)((e, a) => false)
+    project(t).foldRight(Now(true))((_, _) => Now(false)).value
 
   def children[U]
     (t: T)
     (implicit U: Corecursive.Aux[U, ListF[T, ?]], BF: Functor[Base], B: Foldable[Base])
       : U =
-    project(t).foldRight[U](NilF[T, U]().embed)(ConsF(_, _).embed)
+    project(t).foldRight[U](Now(NilF[T, U]().embed))((a, b) => b.map(ConsF(a, _).embed)).value
 
   /** Attribute a tree via an algebra starting from the root. */
   def attributeTopDown[U, A]
@@ -226,7 +233,7 @@ trait Recursive[T] extends Based[T] { self =>
     U.ana((z, t)){ case (a, t) =>
       val ft = project(t)
       val aʹ = f(a, ft)
-      EnvT((aʹ, ft ∘ ((aʹ, _))))
+      EnvT((aʹ, ft.map((aʹ, _))))
     }
 
   /** Kleisli variant of attributeTopDown */
@@ -237,35 +244,35 @@ trait Recursive[T] extends Based[T] { self =>
       : M[U] =
     U.anaM((z, t)){ case (a, t) =>
       val ft = project(t)
-      f(a, ft) ∘ (aʹ => EnvT((aʹ, ft ∘ ((aʹ, _)))))
+      f(a, ft).map(aʹ => EnvT((aʹ, ft.map((aʹ, _)))))
     }
 
   // Foldable
   def all(t: T)(p: T ⇒ Boolean)(implicit BF: Functor[Base], B: Foldable[Base]): Boolean =
-    Tag.unwrap(foldMap(t)(p(_).conjunction))
+    foldMap(t)(p(_).asAll).unwrap
 
   def any(t: T)(p: T ⇒ Boolean)(implicit BF: Functor[Base], B: Foldable[Base]): Boolean =
-    Tag.unwrap(foldMap(t)(p(_).disjunction))
+    foldMap(t)(p(_).asAny).unwrap
 
   def collect[U: Monoid, B]
     (t: T)
     (pf: PartialFunction[T, B])
     (implicit U: Corecursive.Aux[U, ListF[B, ?]], BF: Functor[Base], B: Foldable[Base])
       : U =
-    foldMap(t)(pf.lift(_).foldRight[U](NilF[B, U]().embed)(ConsF(_, _).embed))
+    foldMap(t)(pf.lift(_).foldRight[U](Now(NilF[B, U]().embed))((a, b) => b.map(ConsF(a, _).embed)).value)
 
   def contains
     (t: T, c: T)
-    (implicit T: Equal[T], BF: Functor[Base], B: Foldable[Base])
+    (implicit T: Eq[T], BF: Functor[Base], B: Foldable[Base])
       : Boolean =
-    any(t)(_ ≟ c)
+    any(t)(_ === c)
 
   def foldMap[Z: Monoid]
     (t: T)
     (f: T => Z)
     (implicit BF: Functor[Base], B: Foldable[Base])
       : Z =
-    foldMapM[Free.Trampoline, Z](t)(f(_).pure[Free.Trampoline]).run
+    foldMapM[Eval, Z](t)(f(_).pure[Eval]).value
 
   def foldMapM[M[_]: Monad, Z: Monoid]
     (t: T)
@@ -276,11 +283,11 @@ trait Recursive[T] extends Based[T] { self =>
     def loop(z0: Z, term: T): M[Z] = {
       for {
         z1 <- f(term)
-        z2 <- project(term).foldLeftM(z0 ⊹ z1)(loop(_, _))
+        z2 <- project(term).foldLeftM(z0 |+| z1)(loop(_, _))
       } yield z2
     }
 
-    loop(Monoid[Z].zero, t)
+    loop(Monoid[Z].empty, t)
   }
 
   def convertTo[R]
@@ -318,7 +325,7 @@ trait Recursive[T] extends Based[T] { self =>
     implicit val nested: Functor[λ[α => Base[(T, α)]]] =
       BF.compose[(T, ?)]
 
-    transHylo[T, Base, λ[α => Base[(T, α)]], U, G](t)(f, _ ∘ (_.squared))
+    transHylo[T, Base, λ[α => Base[(T, α)]], U, G](t)(f, _.map(a => (a, a)))
   }
 
   def transCataM[M[_]: Monad, U, G[_]: Functor]
@@ -326,13 +333,13 @@ trait Recursive[T] extends Based[T] { self =>
     (f: TransformM[M, U, Base, G])
     (implicit U: Corecursive.Aux[U, G], BT: Traverse[Base])
       : M[U] =
-    cataM(t)(f(_) ∘ (U.embed(_)))
+    cataM(t)(f(_).map(U.embed(_)))
 }
 
 object Recursive {
   def show[T, F[_]: Functor](implicit T: Recursive.Aux[T, F], F: Delay[Show, F])
       : Show[T] =
-    Show.show(T.cata(_)(F(Cord.CordShow).show))
+    Show.show(T.cata(_)(F(Show[String]).show))
 
   // NB: The rest of this is what would be generated by simulacrum, except this
   //     type class is too complicated to take advantage of that.
@@ -440,12 +447,12 @@ object Recursive {
       typeClassInstance.ghisto(self)(g, f)
     def gcataZygo[W[_]: Comonad, A, B]
       (w: DistributiveLaw[F, W], f: GAlgebra[W, F, B], g: GAlgebra[(B, ?), F, A])
-      (implicit BF: Functor[F], BU: Unzip[F])
+      (implicit BF: Functor[F], BU: Alternative[F])
         : A =
       typeClassInstance.gcataZygo[W, A, B](self)(w, f, g)
     def paraZygo[A, B]
       (f: GAlgebra[(T, ?), F, B], g: GAlgebra[(B, ?), F, A])
-      (implicit BF: Functor[F], BU: Unzip[F])
+      (implicit BF: Functor[F])
         : A =
       typeClassInstance.paraZygo[A, B](self)(f, g)
     def paraMerga[A]
@@ -483,7 +490,7 @@ object Recursive {
       typeClassInstance.collect[U, B](self)(pf)
     def contains
       (c: T)
-      (implicit T: Equal[T], BF: Functor[F], B: Foldable[F])
+      (implicit T: Eq[T], BF: Functor[F], B: Foldable[F])
         : Boolean =
       typeClassInstance.contains(self, c)
     def foldMap[Z: Monoid]

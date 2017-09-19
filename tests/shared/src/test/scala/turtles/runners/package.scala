@@ -22,7 +22,7 @@ import turtles.implicits._
 import org.specs2.execute._
 import org.specs2.matcher._
 import org.specs2.mutable.SpecificationLike
-import scalaz._
+import cats._
 
 package object runners extends SpecificationLike {
   def testRec[F[_], A](t: Fix[F], r: RecRunner[F, A])(implicit F: Functor[F])
@@ -41,7 +41,7 @@ package object runners extends SpecificationLike {
 
   def testCorec[M[_], F[_]: Functor, A]
     (a: A, r: CorecRunner[M, F, A])
-    (implicit Eq0: Delay[Equal, F], S0: Delay[Show, F])
+    (implicit Eq0: Delay[Eq, F], S0: Delay[Show, F])
       : Result =
     r.run[Fix[F]].apply(a).toResult and
     r.run[Mu[F]].apply(a).toResult and

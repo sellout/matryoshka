@@ -16,7 +16,11 @@
 
 package turtles
 
-import scalaz._, Liskov._
+import slamdata.Predef.{Eq => _, _}
+
+import cats._
+import cats.evidence._
+import cats.free._
 
 package object implicits
     extends Birecursive.ToBirecursiveOps
@@ -65,7 +69,7 @@ package object implicits
       U.transGana(self)(k, f)
 
     def transApo[U, G[_]: Functor]
-      (f: CoalgebraicGTransform[(U \/ ?), T, F, G])
+      (f: CoalgebraicGTransform[Either[U, ?], T, F, G])
       (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
         : U =
       U.transApo(self)(f)
