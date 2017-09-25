@@ -29,11 +29,11 @@ import scala.Predef.implicitly
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import org.specs2.scalaz.{ScalazMatchers}
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
 trait DiffArb {
   implicit def diffArbitrary[T[_[_]], F[_]](
@@ -54,17 +54,12 @@ trait DiffArb {
     }
 }
 
-// NB: This is a separate spec because scalaz.Matchers.equal conflicts with
-//     ScalazProperties.equal. There is probably a better way to disambiguate
-//     them.
-class DiffLaws extends Specification with DiffArb with ScalaCheck {
-  "Diff" >> {
-    addFragments(properties(equal.laws[Diff[Mu, Exp, Int]]))
-    addFragments(properties(traverse.laws[Diff[Mu, Exp, ?]]))
-  }
-}
-
 class DiffSpec extends Specification with DiffArb with ScalazMatchers {
+  "Diff" >> {
+    // checkAll("Diff[Mu, Exp, Int]", EqTests[Diff[Mu, Exp, Int]].eqv)
+    checkAll("Diff[Mu, Exp, ?]", TraverseTests[Diff[Mu, Exp, ?]].traverse)
+  }
+
   "diff" should {
     "find non-recursive differences" in {
       NonRec[Mu[Example]]("a", 1).embed.paraMerga(NonRec[Mu[Example]]("b", 1).embed)(diff) must

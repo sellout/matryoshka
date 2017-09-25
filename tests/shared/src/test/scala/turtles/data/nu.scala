@@ -24,13 +24,15 @@ import turtles.scalacheck.arbitrary._
 import turtles.scalacheck.cogen._
 
 import cats._
+import cats.free._
 import cats.implicits._
+import cats.laws.discipline._
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
 
 class NuSpec extends Specification with AlgebraChecks {
   "Nu" >> {
-    addFragments(properties(equal.laws[Nu[Exp]]))
+    // checkAll("Nu[Exp]", EqTests[Nu[Exp]].eq)
+    checkAll("Eq[Nu[Exp]]", SerializableTests.serializable(Eq[Nu[Exp]]))
 
     checkFoldIsoLaws[Nu[CoEnv[Int, Exp, ?]], CoEnv[Int, Exp, ?], Free[Exp, Int]]("Nu", CoEnv.freeIso)
   }

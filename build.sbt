@@ -8,6 +8,7 @@ import slamdata.SbtSlamData.transferPublishAndTagResources
 
 lazy val catsVersion = "1.0.0-SNAPSHOT"
 lazy val monocleVersion = "1.5.0-cats-M1"
+lazy val specs2Version = "3.8.7"
 
 lazy val standardSettings = commonBuildSettings ++ Seq(
   logBuffered in Compile := false,
@@ -71,9 +72,10 @@ lazy val tests = crossProject
   .dependsOn(core, scalacheck)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(libraryDependencies ++= Seq(
-    "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % Test,
-    "org.typelevel"              %% "scalaz-specs2" % "0.5.0" % Test,
-    "org.specs2"                 %% "specs2-core"   % "3.8.7" % Test))
+    "org.typelevel"              %% "cats-laws"         % catsVersion % Test,
+    "com.github.julien-truffaut" %% "monocle-law"       % monocleVersion % Test,
+    "org.specs2"                 %% "specs2-core"       % specs2Version % Test,
+    "org.specs2"                 %% "specs2-scalacheck" % specs2Version % Test))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val docs = project

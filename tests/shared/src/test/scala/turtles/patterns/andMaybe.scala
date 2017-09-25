@@ -21,15 +21,15 @@ import turtles._
 import turtles.helpers._
 import turtles.scalacheck.arbitrary._
 
-import cats._
 import cats.implicits._
-import org.specs2.ScalaCheck
+import cats.laws.discipline._
+import org.scalacheck.Arbitrary._
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
-class AndMaybeSpec extends Specification with ScalaCheck with AlgebraChecks {
+class AndMaybeSpec extends Specification with Discipline with AlgebraChecks {
   "AndMaybe" >> {
-    addFragments(properties(equal.laws[AndMaybe[String, Int]]))
-    addFragments(properties(bitraverse.laws[AndMaybe]))
+    // checkAll("AndMaybe[String, Int]", EqTests[AndMaybe[String, Int]].eqv)
+    checkAll("AndMaybe", BitraverseTests[AndMaybe].bitraverse[(Int, ?), Int, Int, Int, Int, Int, Int])
   }
 }

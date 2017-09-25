@@ -74,7 +74,7 @@ class ZygoSpecs extends Specification with ScalaCheck with ScalazMatchers {
               _.elgotZygoM[String, Int, Int \/ ?](
                 eval.generalizeM[Int \/ ?],
                 elgotStrings(_).right
-              ) must equal("((0 * 0 = 0) * (2 * 5 = 10) = 0)".right)
+              ) must be eqv("((0 * 0 = 0) * (2 * 5 = 10) = 0)".right)
           })
       }
     }

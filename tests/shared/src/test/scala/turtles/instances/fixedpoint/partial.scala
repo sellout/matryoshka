@@ -25,22 +25,22 @@ import scala.Predef.implicitly
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import org.specs2.scalaz.{ScalazMatchers}
-import scalaz.scalacheck.{ScalazProperties => Props}
+import org.typelevel.discipline.specs2.mutable._
 
-class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
+class PartialSpec extends Specification with Discipline {
   /** For testing cases that should work with truly diverging functions. */
   def sometimesNeverGen[A: Arbitrary]: Gen[Partial[A]] =
     Gen.oneOf(Arbitrary.arbitrary[Partial[A]], Gen.const(Partial.never[A]))
 
   "Partial laws" >> {
 
-    addFragments(properties(Props.equal.laws[Partial[Int]](Partial.equal, implicitly)))
-    addFragments(properties(Props.monad.laws[Partial](implicitly, implicitly, implicitly, implicitly, Partial.equal)))
-    addFragments(properties(Props.foldable.laws[Partial]))
+    // checkAll("Partial[Int]", EqTests[Partial[Int]].eqv(Partial.equal, implicitly))
+    checkAll("Partial", MonadTests[Partial].monad(implicitly, implicitly, implicitly, implicitly, Partial.equal))
+    checkAll("Partial", FoldableTests[Partial].foldable)
   }
 
   // https://en.wikipedia.org/wiki/McCarthy_91_function
@@ -56,37 +56,37 @@ class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
 
   "runFor" should {
     "return now immediately" in {
-      Partial.now(13).runFor(Nat.zero[Nat]) must beLeftDisjunction(13)
+      Partial.now(13).runFor(Nat.zero[Nat]) must beLeft(13)
     }
 
     "return a value when it runs past the end" >> prop { (i: Conat) =>
-      i.transAna[Partial[Int]](Partial.delay(7)).runFor(i) must
-        beLeftDisjunction(7)
+      i.transAna[Partial[Int]](Partial.delay(7)(_)).runFor(i) must
+        beLeft(7)
     }
 
     "return after multiple runs" >> prop { (a: Conat, b: Conat) =>
       b > Nat.zero[Conat] ==> {
-        val first = (a + b).transAna[Partial[Int]](Partial.delay(27)).runFor(a)
-        first must beRightDisjunction
-        first.flatMap(_.runFor(b)) must beLeftDisjunction(27)
+        val first = (a + b).transAna[Partial[Int]](Partial.delay(27)(_)).runFor(a)
+        first must beRight
+        first.flatMap(_.runFor(b)) must beLeft(27)
       }
     }
 
     "still pending one short" >> prop { (a: Conat) =>
-      val first = (a + Nat.one[Conat]).transAna[Partial[Int]](Partial.delay(27)).runFor(a)
-      first must beRightDisjunction
-      first.flatMap(_.runFor(a + Nat.one[Conat])) must beLeftDisjunction(27)
+      val first = (a + Nat.one[Conat]).transAna[Partial[Int]](Partial.delay(27)(_)).runFor(a)
+      first must beRight
+      first.flatMap(_.runFor(a + Nat.one[Conat])) must beLeft(27)
     }
 
     "return exactly at the end" >> prop { (n: Conat, i: Int) =>
-      n.transAna[Partial[Int]](Partial.delay(i)).runFor(n) must
-        beLeftDisjunction(i)
+      n.transAna[Partial[Int]](Partial.delay(i)(_)).runFor(n) must
+        beLeft(i)
     }
   }
 
   "unsafePerformSync" should {
     "return now immediately" in {
-      Partial.now(12).unsafePerformSync must equal(12)
+      Partial.now(12).unsafePerformSync must be eqv(12)
     }
 
     "return a value when it gets to the end" in {
@@ -97,7 +97,7 @@ class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
     // NB: This test will depend on the size of your stack, you may have to
     //     increase the initial value on larger stacks.
     "return a value well after stack would overflow" in {
-      100000000.ana[Partial[Unit]](i => if (i === 0) ().left else (i - 1).right)
+      100000000.ana[Partial[Unit]](i => if (i === 0) ().asLeft else (i - 1).asRight)
         .unsafePerformSync must
         equal(())
     }
@@ -107,13 +107,13 @@ class PartialSpec extends Specification with ScalazMatchers with ScalaCheck {
     // NB: This is because the following test doesn't always get close to the
     //     lower bound, so we make sure changes don't make things worse.
     "check lower bound of mc91" in {
-      mc91(mc91LowerBound).unsafePerformSync must equal(91)
+      mc91(mc91LowerBound).unsafePerformSync must be eqv(91)
     }
 
     // TODO: Should work with any Int, but stack overflows on big negatives.
     "always terminate with mc91" >> prop { (n: Int) =>
       n > mc91LowerBound ==>
-        (mc91(n).unsafePerformSync must equal(if (n <= 100) 91 else n - 10))
+        (mc91(n).unsafePerformSync must be eqv(if (n <= 100) 91 else n - 10))
     }
   }
 }

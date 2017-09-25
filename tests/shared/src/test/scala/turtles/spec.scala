@@ -28,33 +28,33 @@ import turtles.runners._
 import turtles.scalacheck.arbitrary._
 import turtles.scalacheck.cogen._
 
+import cats.laws.discipline._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.specs2.scalaz.{ScalazMatchers}
 import org.typelevel.discipline.specs2.mutable._
-import scalaz.{Apply => _, _}, Scalaz._
-import scalaz.scalacheck.ScalazProperties._
 
-class ExpSpec extends Specification {
+class ExpSpec extends Specification with Discipline {
   // NB: These are just a sanity check that the data structure created for the
   //     tests is lawful.
   "Exp" >> {
-    addFragments(properties(equal.laws[Exp[Int]]))
-    addFragments(properties(traverse.laws[Exp]))
+    // checkAll("Exp", EqTests[Exp[Int]].eqv)
+    checkAll("Exp", TraverseTests[Exp].traverse)
   }
 }
 
-class Exp2Spec extends Specification with ScalaCheck {
+class Exp2Spec extends Specification with Discipline {
   // NB: These are just a sanity check that the data structure created for the
   //     tests is lawful.
   "Exp2" >> {
-    addFragments(properties(equal.laws[Exp2[Int]]))
-    addFragments(properties(functor.laws[Exp2]))
+    // checkAll("Exp2", EqTests[Exp2[Int]].eqv)
+    checkAll("Exp2", FunctorTests[Exp2].functor)
+    checkAll("Exp2", FoldableTests[Exp2].foldable)
   }
 }
 
-class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers with Discipline with AlgebraChecks {
+class TurtlesSpecs extends Specification with Discipline with AlgebraChecks {
   val example1ƒ: Exp[Option[Int]] => Option[Int] = {
     case Num(v)           => v.some
     case Mul(left, right) => (left ⊛ right)(_ * _)
@@ -162,7 +162,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
       }
 
       "contain sub-expressions" in {
-        mul(num(1), num(2)).children[List[Fix[Exp]]] must equal(List(num(1), num(2)))
+        mul(num(1), num(2)).children[List[Fix[Exp]]] must be eqv(List(num(1), num(2)))
         mul(num(1), num(2)).convertTo[Mu[Exp]].children[List[Mu[Exp]]] must
           equal(List(num(1), num(2)).map(_.convertTo[Mu[Exp]]))
         mul(num(1), num(2)).convertTo[Nu[Exp]].children[List[Nu[Exp]]] must
@@ -172,7 +172,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "universe" >> {
       "be one for simple literal" in {
-        num(1).elgotPara(universe) must equal(NonEmptyList(num(1)))
+        num(1).elgotPara(universe) must be eqv(NonEmptyList(num(1)))
         num(1).convertTo[Mu[Exp]].elgotPara(universe) must
           equal(NonEmptyList(num(1)).map(_.convertTo[Mu[Exp]]))
         num(1).convertTo[Nu[Exp]].elgotPara(universe) must
@@ -195,7 +195,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           num(1),
           new RecRunner[Exp, Fix[Exp]] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.transCata[Fix[Exp]](addOneƒ) must equal(num(2))
+              _.transCata[Fix[Exp]](addOneƒ) must be eqv(num(2))
           })
       }
 
@@ -204,13 +204,13 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(1), num(2)),
           new RecRunner[Exp, Fix[Exp]] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.transCata[Fix[Exp]](addOneƒ) must equal(mul(num(2), num(3)))
+              _.transCata[Fix[Exp]](addOneƒ) must be eqv(mul(num(2), num(3)))
           })
       }
 
       "be bottom-up" in {
-        (mul(num(0), num(1)).transCataM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must equal(num(2))) and
-        (mul(num(1), num(2)).transCataM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must equal(mul(num(2), num(3))))
+        (mul(num(0), num(1)).transCataM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must be eqv(num(2))) and
+        (mul(num(1), num(2)).transCataM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must be eqv(mul(num(2), num(3))))
       }
     }
 
@@ -220,7 +220,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           num(1),
           new CorecRunner[Id, Exp, Fix[Exp]] {
             def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
-              _.transAna[T](addOneƒ) must equal(num(2).convertTo[T])
+              _.transAna[T](addOneƒ) must be eqv(num(2).convertTo[T])
           })
       }
 
@@ -229,13 +229,13 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(1), num(2)),
           new CorecRunner[Id, Exp, Fix[Exp]] {
             def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
-              _.transAna[T](addOneƒ) must equal(mul(num(2), num(3)).convertTo[T])
+              _.transAna[T](addOneƒ) must be eqv(mul(num(2), num(3)).convertTo[T])
           })
       }
 
       "be top-down" in {
-        mul(num(0), num(1)).transAnaM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must equal(num(0))
-        mul(num(1), num(2)).transAnaM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must equal(num(2))
+        mul(num(0), num(1)).transAnaM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must be eqv(num(0))
+        mul(num(1), num(2)).transAnaM[Partial, Fix[Exp], Exp](addOneOrSimplifyƒ).unsafePerformSync must be eqv(num(2))
       }
     }
 
@@ -294,7 +294,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           num(1),
           new BirecRunner[Exp, Fix[Exp2]] {
             def run[T](implicit T: Birecursive.Aux[T, Exp]) =
-              _.transPrepro[Fix[Exp2]](MinusThree, addOneExpExp2ƒ) must equal(num2(2))
+              _.transPrepro[Fix[Exp2]](MinusThree, addOneExpExp2ƒ) must be eqv(num2(2))
           })
       }
     }
@@ -333,7 +333,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "transPara" >> {
       "project basic exp" in {
-        lam('sym, num(3)).transPara[Fix[Exp2]](extractLambdaƒ[Fix]) must equal(num2(3))
+        lam('sym, num(3)).transPara[Fix[Exp2]](extractLambdaƒ[Fix]) must be eqv(num2(3))
       }
 
       "project basic exp recursively" in {
@@ -344,7 +344,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "foldMap" >> {
       "fold stuff" in {
-        mul(num(0), num(1)).foldMap(_ :: Nil) must equal(mul(num(0), num(1)) :: num(0) :: num(1) :: Nil)
+        mul(num(0), num(1)).foldMap(_ :: Nil) must be eqv(mul(num(0), num(1)) :: num(0) :: num(1) :: Nil)
       }
     }
 
@@ -359,7 +359,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(1), mul(num(2), num(3))),
           new RecRunner[Exp, Int] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.cata(eval) must equal(6)
+              _.cata(eval) must be eqv(6)
           })
       }
 
@@ -368,7 +368,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(0), num(1)),
           new RecRunner[Exp, List[Int]] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.cata(findConstants) must equal(List(0, 1))
+              _.cata(findConstants) must be eqv(List(0, 1))
           })
       }
 
@@ -400,21 +400,21 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(1), mul(num(2), num(3))),
           new RecRunner[Exp, Int] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) = t =>
-              t.para(eval.generalize[(T, ?)]) must equal(t.cata(eval))
+              t.para(eval.generalize[(T, ?)]) must be eqv(t.cata(eval))
           })
       }
     }
 
     "coelgot" >> {
       "behave like cofCata <<< attributeAna" >> prop { (i: Int) =>
-        i.coelgot(eval.generalizeElgot[(Int, ?)], extractFactors) must equal(
+        i.coelgot(eval.generalizeElgot[(Int, ?)], extractFactors) must be eqv(
           i.ana[Cofree[Exp, Int]](attributeCoalgebra(extractFactors)).cata(liftT(eval.generalizeElgot[(Int, ?)])))
       }
     }
 
     "elgot" >> {
       "behave like interpCata <<< freeAna" >> prop { (i: Int) =>
-        i.elgot(eval, extractFactors.generalizeElgot[Int \/ ?]) must equal(
+        i.elgot(eval, extractFactors.generalizeElgot[Int \/ ?]) must be eqv(
           i.ana[Free[Exp, Int]](runT(extractFactors.generalizeElgot[Int \/ ?])).cata(patterns.recover(eval)))
       }
     }
@@ -422,12 +422,12 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     "generalizeElgot" >> {
       "behave like cata on an algebra" ! prop { (i: Int) =>
         val x = i.ana[Fix[Exp]](extractFactors).cata(eval)
-        i.coelgot(eval.generalizeElgot[(Int, ?)], extractFactors) must equal(x)
+        i.coelgot(eval.generalizeElgot[(Int, ?)], extractFactors) must be eqv(x)
       }
 
       "behave like ana on an coalgebra" ! prop { (i: Int) =>
         val x = i.ana[Fix[Exp]](extractFactors).cata(eval)
-        i.elgot(eval, extractFactors.generalizeElgot[Int \/ ?]) must equal(x)
+        i.elgot(eval, extractFactors.generalizeElgot[Int \/ ?]) must be eqv(x)
       }
     }
 
@@ -459,33 +459,33 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
       "find no free vars in closed term" in {
         val t = lam('sym, mul(num(5), vari('sym)))
-        t.elgotCata(distZygo(freeVars), freeVarsNumber) must equal(0)
+        t.elgotCata(distZygo(freeVars), freeVarsNumber) must be eqv(0)
       }
 
       "find some free vars in open term" in {
         val t1 = lam('bound, mul(vari('open), vari('bound)))
         val t2 = lam('x, mul(vari('y), lam('y, mul(vari('open), mul(vari('y), vari('x))))))
-        t1.elgotCata(distZygo(freeVars), freeVarsNumber) must equal(1)
-        t2.elgotCata(distZygo(freeVars), freeVarsNumber) must equal(2)
+        t1.elgotCata(distZygo(freeVars), freeVarsNumber) must be eqv(1)
+        t2.elgotCata(distZygo(freeVars), freeVarsNumber) must be eqv(2)
       }
     }
 
     "elgotAna" >> {
       "generate closed terms" in {
-        (3, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must equal (
+        (3, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must be eqv (
           mul(mul(num(42), num(42)), num(42))
         )
 
-        (4, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must equal (
+        (4, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must be eqv (
           lam('x0, mul(mul(vari('x0), vari('x0)), vari('x0)))
         )
 
-        (5, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must equal (
+        (5, 0).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must be eqv (
           mul(lam('x0, mul(vari('x0), vari('x0))), mul(num(42), num(42)))
         )
       }
       "generate open terms" in {
-        (3, 1).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must equal (
+        (3, 1).elgotAna[Fix[Exp]].apply(distGApo(generateVars), generateTerm) must be eqv (
           mul(mul(vari('x0), vari('x0)), vari('x0))
         )
       }
@@ -499,9 +499,9 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
       "assert that closed terms don't have free vars" in {
         for (i <- (0 to 10)) {
-          closed(i, 0) must equal (0)
+          closed(i, 0) must be eqv (0)
         }
-        closed(11, 0) must equal (0)
+        closed(11, 0) must be eqv (0)
       }
     }
 
@@ -590,7 +590,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(1), mul(num(2), num(3))),
           new RecRunner[Exp, Int] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.para(peval[T]) must equal(6)
+              _.para(peval[T]) must be eqv(6)
           })
       }
 
@@ -599,7 +599,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(0), num(0)),
           new RecRunner[Exp, Int] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.para(peval[T]) must equal(-1)
+              _.para(peval[T]) must be eqv(-1)
           })
       }
 
@@ -608,7 +608,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           mul(num(0), mul(num(0), num(1))),
           new RecRunner[Exp, Int] {
             def run[T](implicit T: Recursive.Aux[T, Exp]) =
-              _.para(peval[T]) must equal(0)
+              _.para(peval[T]) must be eqv(0)
           })
       }
     }
@@ -629,7 +629,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     "attributeTopDown" >> {
       "increase toward leaves" in {
         val v = mul(num(0), mul(num(0), num(1)))
-        v.attributeTopDown(0)(depth) must equal(
+        v.attributeTopDown(0)(depth) must be eqv(
           Cofree[Exp, Int](1, Mul(
             Cofree(2, Num(0)),
             Cofree(2, Mul(
@@ -652,18 +652,18 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     "distCata" >> {
       "behave like cata" in {
         val v = mul(num(0), mul(num(0), num(1)))
-        v.gcata[Id, Int](distCata, eval) must equal(v.cata(eval))
-        v.convertTo[Mu[Exp]].gcata[Id, Int](distCata, eval) must equal(v.cata(eval))
-        v.convertTo[Nu[Exp]].gcata[Id, Int](distCata, eval) must equal(v.cata(eval))
+        v.gcata[Id, Int](distCata, eval) must be eqv(v.cata(eval))
+        v.convertTo[Mu[Exp]].gcata[Id, Int](distCata, eval) must be eqv(v.cata(eval))
+        v.convertTo[Nu[Exp]].gcata[Id, Int](distCata, eval) must be eqv(v.cata(eval))
       }
     }
 
     "distPara" >> {
       "behave like para" in {
         val v = mul(num(0), mul(num(0), num(1)))
-        v.gcata[(Fix[Exp], ?), Int](distPara, peval[Fix[Exp]]) must equal(v.para(peval[Fix[Exp]]))
-        v.convertTo[Mu[Exp]].gcata[(Mu[Exp], ?), Int](distPara, peval[Mu[Exp]]) must equal(v.convertTo[Mu[Exp]].para(peval[Mu[Exp]]))
-        v.convertTo[Nu[Exp]].gcata[(Nu[Exp], ?), Int](distPara, peval[Nu[Exp]]) must equal(v.convertTo[Nu[Exp]].para(peval[Nu[Exp]]))
+        v.gcata[(Fix[Exp], ?), Int](distPara, peval[Fix[Exp]]) must be eqv(v.para(peval[Fix[Exp]]))
+        v.convertTo[Mu[Exp]].gcata[(Mu[Exp], ?), Int](distPara, peval[Mu[Exp]]) must be eqv(v.convertTo[Mu[Exp]].para(peval[Mu[Exp]]))
+        v.convertTo[Nu[Exp]].gcata[(Nu[Exp], ?), Int](distPara, peval[Nu[Exp]]) must be eqv(v.convertTo[Nu[Exp]].para(peval[Nu[Exp]]))
       }
     }
 
@@ -800,7 +800,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "hylo" >> {
       "factor and then evaluate" >> prop { (i: Int) =>
-        i.hylo(eval, extractFactors) must equal(i)
+        i.hylo(eval, extractFactors) must be eqv(i)
       }
     }
 
@@ -876,9 +876,9 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "histo" >> {
       "eval simple literal multiplication" in {
-        mul(num(5), num(10)).histo(partialEval[Fix[Exp]]) must equal(num(50))
-        mul(num(5), num(10)).histo(partialEval[Mu[Exp]]) must equal(num(50).convertTo[Mu[Exp]])
-        mul(num(5), num(10)).histo(partialEval[Nu[Exp]]) must equal(num(50).convertTo[Nu[Exp]])
+        mul(num(5), num(10)).histo(partialEval[Fix[Exp]]) must be eqv(num(50))
+        mul(num(5), num(10)).histo(partialEval[Mu[Exp]]) must be eqv(num(50).convertTo[Mu[Exp]])
+        mul(num(5), num(10)).histo(partialEval[Nu[Exp]]) must be eqv(num(50).convertTo[Nu[Exp]])
       }
 
       "partially evaluate mul in lambda" in {
@@ -937,7 +937,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           8,
           new CorecRunner[Id, Exp, Int] {
             def run[T: Eq: Show](implicit T: Birecursive.Aux[T, Exp]) =
-              _.futu[T](extract2and3) must equal(mul(num(2), mul(num(2), num(2))).convertTo[T])
+              _.futu[T](extract2and3) must be eqv(mul(num(2), mul(num(2), num(2))).convertTo[T])
           })
       }
 
@@ -964,9 +964,9 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "chrono" >> {
       "factor and partially eval" >> prop { (i: Int) =>
-        i.chrono(partialEval[Fix[Exp]], extract2and3) must equal(num(i))
-        i.chrono(partialEval[Mu[Exp]], extract2and3) must equal(num(i).convertTo[Mu[Exp]])
-        i.chrono(partialEval[Nu[Exp]], extract2and3) must equal(num(i).convertTo[Nu[Exp]])
+        i.chrono(partialEval[Fix[Exp]], extract2and3) must be eqv(num(i))
+        i.chrono(partialEval[Mu[Exp]], extract2and3) must be eqv(num(i).convertTo[Mu[Exp]])
+        i.chrono(partialEval[Nu[Exp]], extract2and3) must be eqv(num(i).convertTo[Nu[Exp]])
       }
     }
   }
@@ -980,8 +980,8 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
       "find and replace two children" in {
         (holes(mul(num(0), num(1)).unFix) match {
           case Mul((Fix(Num(0)), f1), (Fix(Num(1)), f2)) =>
-            f1(num(2)) must equal(Mul(num(2), num(1)))
-            f2(num(2)) must equal(Mul(num(0), num(2)))
+            f1(num(2)) must be eqv(Mul(num(2), num(1)))
+            f2(num(2)) must be eqv(Mul(num(0), num(2)))
           case r => failure
         }): org.specs2.execute.Result
       }
@@ -995,10 +995,10 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
       "find and replace two children" in {
         (holesList(mul(num(0), num(1)).unFix) match {
           case (t1, f1) :: (t2, f2) :: Nil =>
-            t1         must equal(num(0))
-            f1(num(2)) must equal(Mul(num(2), num(1)))
-            t2         must equal(num(1))
-            f2(num(2)) must equal(Mul(num(0), num(2)))
+            t1         must be eqv(num(0))
+            f1(num(2)) must be eqv(Mul(num(2), num(1)))
+            t2         must be eqv(num(1))
+            f2(num(2)) must be eqv(Mul(num(0), num(2)))
           case _ => failure
         }): org.specs2.execute.Result
       }
@@ -1032,7 +1032,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
 
     "convert" >> {
       "forget unit" >> Prop.forAll(expGen) { exp =>
-        exp.transCata[T[Unit]](attrK[T[Unit]](())).cata(deattribute[Exp, Unit, Mu[Exp]](_.embed)) must equal(exp)
+        exp.transCata[T[Unit]](attrK[T[Unit]](())).cata(deattribute[Exp, Unit, Mu[Exp]](_.embed)) must be eqv(exp)
       }
     }
 
@@ -1052,21 +1052,21 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
   "count" should {
     "return the number of instances in the structure" in {
       val exp = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
-      exp.elgotPara(count(num(12))) must equal(3)
+      exp.elgotPara(count(num(12))) must be eqv(3)
     }
   }
 
   "size" should {
     "return the number of nodes in the structure" in {
       val exp = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
-      exp.cata(turtles.size[Nat].apply).toInt must equal(9)
+      exp.cata(turtles.size[Nat].apply).toInt must be eqv(9)
     }
   }
 
   "height" should {
     "return the longest path from root to leaf" in {
       val exp = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
-      exp.cata(height) must equal(3)
+      exp.cata(height) must be eqv(3)
     }
   }
 
@@ -1084,14 +1084,14 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
       exp.transAnaTM(turtles.find[Fix[Exp]] {
         case Embed(Mul(Embed(Num(_)), _)) => true
         case _                            => false
-      }) must equal(mul(num(10), mul(num(11), num(7))).left)
+      }) must be eqv(mul(num(10), mul(num(11), num(7))).left)
     }
 
     "return leaf-most instance that passes" in {
       exp.transCataTM(turtles.find[Fix[Exp]] {
         case Embed(Mul(Embed(Num(_)), _)) => true
         case _                            => false
-      }) must equal(mul(num(11), num(7)).left)
+      }) must be eqv(mul(num(11), num(7)).left)
     }
   }
 
@@ -1099,19 +1099,19 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
     "replace equivalent forms" in {
       val exp = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
       val res = mul(mul(num(12), num(92)), num(92))
-      exp.transApoT(substitute(mul(num(12), num(8)), num(92))) must equal(res)
+      exp.transApoT(substitute(mul(num(12), num(8)), num(92))) must be eqv(res)
     }
 
     "replace equivalent forms without re-replacing created forms" in {
       val exp = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
       val res = mul(mul(num(12), num(8)), num(8))
-      exp.transApoT(substitute(mul(num(12), num(8)), num(8))) must equal(res)
+      exp.transApoT(substitute(mul(num(12), num(8)), num(8))) must be eqv(res)
     }
 
     "replace equivalent forms without re-replacing inserted forms" in {
       val exp = mul(mul(num(12), num(8)), num(8))
       val res = mul(mul(num(12), mul(num(12), num(8))), mul(num(12), num(8)))
-      exp.transApoT(substitute(num(8), mul(num(12), num(8)))) must equal(res)
+      exp.transApoT(substitute(num(8), mul(num(12), num(8)))) must be eqv(res)
     }
   }
 
@@ -1127,7 +1127,7 @@ class TurtlesSpecs extends Specification with ScalaCheck with ScalazMatchers wit
           CoEnv[Int, Exp, Fix[CoEnv[Int, Exp, ?]]](\/-(Mul(
             CoEnv[Int, Exp, Fix[CoEnv[Int, Exp, ?]]](Num(5).right[Int]).embed,
             CoEnv(6.left[Exp[Fix[CoEnv[Int, Exp, ?]]]]).embed))).embed))).embed
-      exp.cata(recover(eval)) must equal(720)
+      exp.cata(recover(eval)) must be eqv(720)
     }
   }
 

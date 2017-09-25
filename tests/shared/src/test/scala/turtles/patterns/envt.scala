@@ -26,13 +26,14 @@ import turtles.scalacheck.cogen._
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
-class EnvTSpec extends Specification with AlgebraChecks {
+class EnvTSpec extends Specification with Discipline with AlgebraChecks {
   "EnvT" >> {
-    addFragments(properties(equal.laws[EnvT[String, Exp, Int]]))
-    addFragments(properties(comonad.laws[EnvT[String, NonEmptyList, ?]]))
+    // checkAll("EnvT[String, Exp, Int]", EqTests[EnvT[String, Exp, Int]].eqv)
+    checkAll("EnvT[String, NonEmptyList, ?]", ComonadTests[EnvT[String, NonEmptyList, ?]].comonad)
 
     checkAlgebraIsoLaws("EnvT ⇔ Cofree", EnvT.cofreeIso[Int, Exp])
   }

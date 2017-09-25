@@ -19,8 +19,9 @@ package turtles.exp2
 import slamdata.Predef.{Eq => _, _}
 import turtles._
 
+import cats._
+import cats.implicits._
 import org.scalacheck._
-import scalaz.{Apply => _, _}, Scalaz._
 
 sealed abstract class Exp2[A]
 case class Const[A]() extends Exp2[A]
@@ -44,9 +45,9 @@ object Exp2 {
       f: (A) ⇒ G[B])(
       implicit G: Applicative[G]) =
       fa match {
-        case Const()   => G.point(Const[B]())
-        case Num2(v)   => G.point(Num2[B](v))
-        case Single(a) => f(a) ∘ (Single(_))
+        case Const()   => G.pure(Const[B]())
+        case Num2(v)   => G.pure(Num2[B](v))
+        case Single(a) => f(a).map(Single(_))
       }
   }
 
@@ -57,17 +58,17 @@ object Exp2 {
     def apply[α](show: Show[α]) =
       Show.show {
         case Const()   => "Const()"
-        case Num2(v)   => "Num2(" + v.shows + ")"
-        case Single(a) => "Single(" + show.shows(a) + ")"
+        case Num2(v)   => "Num2(" + v.show + ")"
+        case Single(a) => "Single(" + show.show(a) + ")"
       }
   }
 
   implicit val eq: Delay[Eq, Exp2] = new Delay[Eq, Exp2] {
     def apply[α](eq: Eq[α]) =
-      Eq.equal[Exp2[α]] {
+      Eq.instance[Exp2[α]] {
         case (Const(), Const())       => true
         case (Num2(v1), Num2(v2))     => v1 === v2
-        case (Single(a1), Single(a2)) => eq.equal(a1, a2)
+        case (Single(a1), Single(a2)) => eq.eqv(a1, a2)
         case _                        => false
       }
   }

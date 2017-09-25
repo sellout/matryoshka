@@ -18,8 +18,6 @@ package turtles.data
 
 import turtles._
 
-import scala.Unit
-
 import cats._
 import cats.implicits._
 
@@ -32,14 +30,16 @@ sealed abstract class Nu[F[_]] {
   val unNu: Coalgebra[F, A]
 }
 
-object Nu {
+object Nu extends NuInstances {
   def apply[F[_], B](f: Coalgebra[F, B], b: B): Nu[F] =
     new Nu[F] {
       type A = B
       val a = b
       val unNu = f
     }
+}
 
+abstract class NuInstances extends NuInstancesʹ {
   implicit def birecursiveT: BirecursiveT[Nu] = new BirecursiveT[Nu] {
     def projectT[F[_]: Functor](t: Nu[F]) = t.unNu(t.a).map(Nu(t.unNu, _))
 
@@ -48,11 +48,11 @@ object Nu {
     override def anaT[F[_]: Functor, A](a: A)(f: A => F[A]) = Nu(f, a)
   }
 
-  implicit val equalT: EqT[Nu] = EqT.recursiveT
-
-  // TODO: Use OrderT
-  implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]]): Order[Nu[F]] =
-    Birecursive.order[Nu[F], F]
+  implicit def orderT: OrderT[Nu] = OrderT.recursiveT
 
   implicit val showT: ShowT[Nu] = ShowT.recursiveT
+}
+
+abstract class NuInstancesʹ {
+  implicit val equalT: EqT[Nu] = EqT.recursiveT
 }

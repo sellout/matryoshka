@@ -25,9 +25,8 @@ import cats._
 import cats.implicits._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import org.specs2.scalaz.{ScalazMatchers}
 
-class StreamSpec extends Specification with ScalaCheck with ScalazMatchers {
+class StreamSpec extends Specification with ScalaCheck {
   /** Infinite sequence of Fibonacci numbers (at least until they overflow
     * int32)
     */
@@ -39,20 +38,20 @@ class StreamSpec extends Specification with ScalaCheck with ScalazMatchers {
 
   "fib" should {
     "begin with 1" in {
-      fib.head must equal(1)
+      fib.head must be eqv(1)
     }
 
     "lazily generate the correct sequence" in {
-      5.anaM[Nat](Nat.fromInt) ∘ (fib.drop(_).head) must equal(8.some)
+      5.anaM[Nat](Nat.fromInt).map(fib.drop(_).head) must be eqv(8.some)
     }
 
     "have a proper prefix" in {
-      5.anaM[Nat](Nat.fromInt) ∘ (fib.take[List[Int]](_)) must
+      5.anaM[Nat](Nat.fromInt).map(fib.take[List[Int]](_)) must
         equal(List(1, 1, 2, 3, 5).some)
     }
 
     "get a subsequence" in {
-      (10.anaM[Nat](Nat.fromInt) ⊛ 5.anaM[Nat](Nat.fromInt))((d, t) =>
+      (10.anaM[Nat](Nat.fromInt), 5.anaM[Nat](Nat.fromInt)).mapN((d, t) =>
         fib.drop(d).take[List[Int]](t)) must
         equal(List(89, 144, 233, 377, 610).some)
     }
@@ -66,8 +65,8 @@ class StreamSpec extends Specification with ScalaCheck with ScalazMatchers {
     // FIXME: These two blow up the stack with much larger inputs
 
     "have the given value at an arbitrary point" >> prop { (i: Int, d: Int) =>
-      350.anaM[Nat](Nat.fromInt) ∘
-        (i.ana[Stream[Int]](constantly).drop(_).head) must
+      350.anaM[Nat](Nat.fromInt).map(
+        i.ana[Stream[Int]](constantly).drop(_).head) must
         equal(i.some)
     }
 

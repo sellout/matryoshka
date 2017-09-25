@@ -20,6 +20,7 @@ import slamdata.Predef.{Eq => _, _}
 import turtles.exp._
 
 import cats._
+import cats.data._
 import cats.implicits._
 import org.scalacheck._
 import org.specs2.mutable._
@@ -36,7 +37,7 @@ package object helpers extends SpecificationLike with Discipline {
 
   implicit def nonEmptyListEq: Delay[Eq, NonEmptyList] =
     new Delay[Eq, NonEmptyList] {
-      def apply[A](eq: Eq[A]) = NonEmptyList.nonEmptyListEq(eq)
+      def apply[A](eq: Eq[A]) = NonEmptyList.catsDataEqForNonEmptyList(eq)
     }
 
   def strings(t: Exp[(Int, String)]): String = t match {

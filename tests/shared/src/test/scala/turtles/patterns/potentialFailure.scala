@@ -24,12 +24,13 @@ import turtles.scalacheck.arbitrary._
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
-class PotentialFailureSpec extends Specification with ScalaCheck {
+class PotentialFailureSpec extends Specification with Discipline {
   implicit def potentialFailureArbitrary[T[_[_]], F[_], E: Arbitrary](
     implicit T: Arbitrary[T[F]], F: Delay[Arbitrary, F]):
       Delay[Arbitrary, PotentialFailure[T, F, E, ?]] =
@@ -42,8 +43,8 @@ class PotentialFailureSpec extends Specification with ScalaCheck {
     }
 
   "PotentialFailure" >> {
-    addFragments(properties(equal.laws[PotentialFailure[Fix, Exp, String, Int]]))
-    addFragments(properties(bitraverse.laws[PotentialFailure[Fix, Exp, ?, ?]]))
-    addFragments(properties(traverse.laws[PotentialFailure[Fix, Exp, String, ?]]))
+    // checkAll("PotentialFailure[Fix, Exp, String, Int]", EqTests[PotentialFailure[Fix, Exp, String, Int]].eqv)
+    checkAll("PotentialFailure[Fix, Exp, ?, ?]", BitraverseTests[PotentialFailure[Fix, Exp, ?, ?]].bitraverse)
+    checkAll("PotentialFailure[Fix, Exp, String, ?]", TraverseTests[PotentialFailure[Fix, Exp, String, ?]].traverse)
   }
 }

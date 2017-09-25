@@ -17,43 +17,42 @@
 package turtles.instances.fixedpoint
 
 import slamdata.Predef.{Eq => _, _}
-import turtles._
-import turtles.data.list._
+import turtles._, CatsMatchers._
+import turtles.data._
+import turtles.derived._
 import turtles.implicits._
 import turtles.patterns._
 import turtles.scalacheck.arbitrary._
 
-import cats._
 import cats.implicits._
-import org.specs2.ScalaCheck
+import cats.laws.discipline._
 import org.specs2.mutable._
-import org.specs2.scalaz.ScalazMatchers
-import scalaz.scalacheck.{ScalazProperties => Props}
+import org.typelevel.discipline.specs2.mutable._
 
-class ListSpec extends Specification with ScalaCheck with ScalazMatchers {
+class ListSpec extends Specification with Discipline {
   "List laws" >> {
-    addFragments(properties(Props.equal.laws[List[Int]]))
-    addFragments(properties(Props.foldable.laws[List]))
+    // checkAll("List[Int]", EqTests[List[Int]].eqv)
+    checkAll("List", FoldableTests[List].foldable[Int, Int])
   }
 
 
   "apply" should {
-    "be equivalent to scala.List.apply" in {
+    "be equivalent to scala.List.apply" >> {
       List(1, 2, 3, 4).cata(ListF.listIso.get) must
-        equal(scala.List(1, 2, 3, 4))
+        be eqv(scala.List(1, 2, 3, 4))
     }
   }
 
   "fill" should {
     "be equivalent to scala.List.fill" >> prop { (n: Nat, v: Int) =>
       List.fill[scala.List[Int]](n)(v) must
-        equal(scala.List.fill(n.toInt)(v))
+        be eqv(scala.List.fill(n.toInt)(v))
     }
   }
 
   "length" should {
     "count the number of elements" >> prop { (n: Nat, v: Int) =>
-      List.fill[List[Int]](n)(v).length must equal(n.toInt)
+      List.fill[List[Int]](n)(v).length must be eqv(n.toInt)
     }
   }
 
@@ -69,8 +68,8 @@ class ListSpec extends Specification with ScalaCheck with ScalazMatchers {
 
   "tailOption" should {
     "return the remainder of the list" in {
-      List(1, 2, 3, 4).tailOption must equal(List(2, 3, 4).some)
-      List(1).tailOption must equal(List[Int]().some)
+      List(1, 2, 3, 4).tailOption must be eqv(List(2, 3, 4).some)
+      List(1).tailOption must be eqv(List[Int]().some)
     }
 
     "if there is one" in {

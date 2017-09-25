@@ -18,8 +18,6 @@ package turtles.data
 
 import turtles._
 
-import scala.Unit
-
 import cats._
 import cats.implicits._
 
@@ -28,7 +26,9 @@ import cats.implicits._
   */
 final case class Mu[F[_]](unMu: Algebra[F, ?] ~> Id)
 
-object Mu {
+object Mu extends MuInstances
+
+abstract class MuInstances extends MuInstancesʹ {
   implicit def birecursiveT: BirecursiveT[Mu] = new BirecursiveT[Mu] {
     // FIXME: ugh, shouldn’t have to redefine `lambek` in here?
     def projectT[F[_]: Functor](t: Mu[F]) =
@@ -41,11 +41,11 @@ object Mu {
       })
   }
 
-  implicit val equalT: EqT[Mu] = EqT.recursiveT
-
-  // TODO: Use OrderT
-  implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]]): Order[Mu[F]] =
-    Birecursive.order[Mu[F], F]
+  implicit def orderT: OrderT[Mu] = OrderT.recursiveT
 
   implicit val showT: ShowT[Mu] = ShowT.recursiveT
+}
+
+abstract class MuInstancesʹ {
+  implicit val equalT: EqT[Mu] = EqT.recursiveT
 }

@@ -117,6 +117,7 @@ package object fixedpoint {
     (self: T)
     (implicit T: Recursive.Aux[T, ListF[A, ?]]) {
     def find(cond: A => Boolean): Option[A] = self.cata(ListF.find(cond))
+    def length: Int = self.cata(height)
     def headOption: Option[A] = self.project.headOption
     def tailOption: Option[T] = self.project.tailOption
   }

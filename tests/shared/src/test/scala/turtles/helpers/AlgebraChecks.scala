@@ -23,7 +23,6 @@ import turtles.scalacheck.cogen._
 import java.lang.String
 
 import cats._
-import cats.implicits._
 import monocle.law.discipline._
 import org.scalacheck._
 import org.specs2.mutable._

@@ -18,17 +18,17 @@ package turtles.example
 
 import slamdata.Predef.{Eq => _, _}
 import turtles._
-import turtles.helpers._
 import turtles.implicits._
 import turtles.patterns._
 import turtles.scalacheck.arbitrary._
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.scalacheck._
-import org.specs2.ScalaCheck
+import org.scalacheck.support.cats._
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
 sealed abstract class Example[A]
 final case class Empty[A]()                                   extends Example[A]
@@ -43,17 +43,17 @@ object Example {
     def traverseImpl[G[_], A, B](fa: Example[A])(f: A => G[B])(
       implicit G: Applicative[G]):
         G[Example[B]] = fa match {
-      case Empty()        => G.point(Empty())
-      case NonRec(a, b)   => G.point(NonRec(a, b))
+      case Empty()        => G.pure(Empty())
+      case NonRec(a, b)   => G.pure(NonRec(a, b))
       case SemiRec(a, b)  => f(b).map(SemiRec(a, _))
-      case MultiRec(a, b) => (f(a) ⊛ f(b))(MultiRec(_, _))
+      case MultiRec(a, b) => (f(a), f(b)).mapN(MultiRec(_, _))
       case OneList(a)     => a.traverse(f).map(OneList(_))
       case TwoLists(a, b) => (a.traverse(f), b.traverse(f)).mapN(TwoLists(_, _))
     }
   }
 
   implicit val equal: Delay[Eq, Example] = new Delay[Eq, Example] {
-    def apply[α](eq: Eq[α]) = Eq.equal((a, b) => {
+    def apply[α](eq: Eq[α]) = Eq.instance((a, b) => {
       implicit val ieq = eq
         (a, b) match {
         case (Empty(),          Empty())          => true
@@ -75,7 +75,7 @@ object Example {
       Show.show {
         case Empty()          => "Empty()"
         case NonRec(s2, i2)   =>
-          "NonRec(" |+| s2.show |+| ", " |+| i2.shows |+| ")"
+          "NonRec(" |+| s2.show |+| ", " |+| i2.show |+| ")"
         case SemiRec(i2, a2)   =>
           "SemiRec(" |+| i2.show |+| ", " |+| s.show(a2) |+| ")"
         case MultiRec(a2, b2) =>
@@ -108,21 +108,21 @@ object Example {
       def apply[α](arb: Arbitrary[α]) =
         Arbitrary(Gen.sized(size =>
           Gen.oneOf(
-            Empty[α]().point[Gen],
-            (Arbitrary.arbitrary[String] ⊛ Arbitrary.arbitrary[Int])(
+            Empty[α]().pure[Gen],
+            (Arbitrary.arbitrary[String], Arbitrary.arbitrary[Int]).mapN(
               NonRec[α](_, _)),
-            (Arbitrary.arbitrary[Int] ⊛ arb.arbitrary)(SemiRec(_, _)),
-            (arb.arbitrary ⊛ arb.arbitrary)(MultiRec(_, _)),
+            (Arbitrary.arbitrary[Int], arb.arbitrary).mapN(SemiRec(_, _)),
+            (arb.arbitrary, arb.arbitrary).mapN(MultiRec(_, _)),
             Gen.listOfN(size, arb.arbitrary).map(OneList(_)),
-            (Gen.listOfN(size / 2, arb.arbitrary) ⊛ Gen.listOfN(size / 2, arb.arbitrary))(
+            (Gen.listOfN(size / 2, arb.arbitrary), Gen.listOfN(size / 2, arb.arbitrary)).mapN(
               TwoLists(_, _)))
         ))
     }
 }
 
-class ExampleSpec extends Specification with ScalaCheck {
+class ExampleSpec extends Specification with Discipline {
   "Example" >> {
-    addFragments(properties(equal.laws[Example[Int]]))
-    addFragments(properties(traverse.laws[Example]))
+    // checkAll("Example[Int]", EqTests[Example[Int]].eqv)
+    checkAll("Example", TraverseTests[Example].traverse[Int, Int, Int, Int, (Int, ?), (Int, ?)])
   }
 }

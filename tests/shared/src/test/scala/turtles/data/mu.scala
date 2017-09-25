@@ -24,13 +24,15 @@ import turtles.scalacheck.arbitrary._
 import turtles.scalacheck.cogen._
 
 import cats._
+import cats.free._
 import cats.implicits._
+import cats.laws.discipline._
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
 
 class MuSpec extends Specification with AlgebraChecks {
   "Mu" >> {
-    addFragments(properties(equal.laws[Mu[Exp]]))
+    // checkAll("Mu[Exp]", EqTests[Mu[Exp]].eq)
+    checkAll("Eq[Mu[Exp]]", SerializableTests.serializable(Eq[Mu[Exp]]))
 
     checkFoldIsoLaws[Mu[CoEnv[Int, Exp, ?]], CoEnv[Int, Exp, ?], Free[Exp, Int]]("Mu", CoEnv.freeIso)
   }

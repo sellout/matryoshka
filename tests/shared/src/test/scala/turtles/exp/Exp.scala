@@ -23,7 +23,7 @@ import turtles.implicits._
 import cats._
 import cats.implicits._
 import org.scalacheck._
-import scalaz.scalacheck.ScalaCheckBinding._
+import org.scalacheck.support.cats._
 
 sealed abstract class Exp[A]
 case class Num[A](value: Int) extends Exp[A]
@@ -33,18 +33,18 @@ case class Lambda[A](param: Symbol, body: A) extends Exp[A]
 case class Apply[A](func: A, arg: A) extends Exp[A]
 case class Let[A](name: Symbol, value: A, inBody: A) extends Exp[A]
 
-object Exp {
+object Exp extends ExpInstances {
   implicit val arbSymbol = Arbitrary(Arbitrary.arbitrary[String].map(Symbol(_)))
 
   implicit val arbitrary: Delay[Arbitrary, Exp] = new Delay[Arbitrary, Exp] {
     def apply[α](arb: Arbitrary[α]): Arbitrary[Exp[α]] =
       Arbitrary(Gen.oneOf(
         Arbitrary.arbitrary[Int].map(Num[α](_)),
-        (arb.arbitrary ⊛ arb.arbitrary)(Mul(_, _)),
+        (arb.arbitrary, arb.arbitrary).mapN(Mul(_, _)),
         Arbitrary.arbitrary[Symbol].map(Var[α](_)),
-        (Arbitrary.arbitrary[Symbol] ⊛ arb.arbitrary)(Lambda(_, _)),
-        (arb.arbitrary ⊛ arb.arbitrary)(Apply(_, _)),
-        (Arbitrary.arbitrary[Symbol] ⊛ arb.arbitrary ⊛ arb.arbitrary)(
+        (Arbitrary.arbitrary[Symbol], arb.arbitrary).mapN(Lambda(_, _)),
+        (arb.arbitrary, arb.arbitrary).mapN(Apply(_, _)),
+        (Arbitrary.arbitrary[Symbol], arb.arbitrary, arb.arbitrary).mapN(
           Let(_, _, _))))
   }
 
@@ -54,12 +54,12 @@ object Exp {
 
   implicit val traverse: Traverse[Exp] = new Traverse[Exp] {
     def traverseImpl[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
-      case Num(v)           => G.point(Num(v))
-      case Mul(left, right) => G.apply2(f(left), f(right))(Mul(_, _))
-      case Var(v)           => G.point(Var(v))
-      case Lambda(p, b)     => G.map(f(b))(Lambda(p, _))
-      case Apply(func, arg) => G.apply2(f(func), f(arg))(Apply(_, _))
-      case Let(n, v, i)     => G.apply2(f(v), f(i))(Let(n, _, _))
+      case Num(v)           => G.pure(Num(v))
+      case Mul(left, right) => (f(left), f(right)).mapN(Mul(_, _))
+      case Var(v)           => G.pure(Var(v))
+      case Lambda(p, b)     => f(b).map(Lambda(p, _))
+      case Apply(func, arg) => (f(func), f(arg)).mapN(Apply(_, _))
+      case Let(n, v, i)     => (f(v), f(i)).mapN(Let(n, _, _))
     }
   }
 
@@ -68,19 +68,19 @@ object Exp {
   //     as well as from a derivable Eq.
   implicit val equal: Delay[Eq, Exp] = new Delay[Eq, Exp] {
     def apply[α](eq: Eq[α]) =
-      Eq.equal[Exp[α]] {
+      Eq.instance[Exp[α]] {
         case (Num(v1), Num(v2))                 => v1 === v2
         case (Mul(a1, b1), Mul(a2, b2))         =>
-          eq.equal(a1, a2) && eq.equal(b1, b2)
+          eq.eqv(a1, a2) && eq.eqv(b1, b2)
         case (Var(s1), Var(s2))                 =>
           s1.name.substring(0, 3 min s1.name.length) ==
           s2.name.substring(0, 3 min s2.name.length)
         case (Lambda(p1, a1), Lambda(p2, a2))   =>
-          p1 == p2 && eq.equal(a1, a2)
+          p1 == p2 && eq.eqv(a1, a2)
         case (Apply(f1, a1), Apply(f2, a2))     =>
-          eq.equal(f1, f2) && eq.equal(a1, a2)
+          eq.eqv(f1, f2) && eq.eqv(a1, a2)
         case (Let(n1, v1, i1), Let(n2, v2, i2)) =>
-          n1 == n2 && eq.equal(v1, v2) && eq.equal(i1, i2)
+          n1 == n2 && eq.eqv(v1, v2) && eq.eqv(i1, i2)
         case (_, _)                             => false
       }
   }
@@ -93,19 +93,21 @@ object Exp {
   implicit val show: Delay[Show, Exp] = new Delay[Show, Exp] {
     def apply[α](show: Show[α]) =
       Show.show {
-        case Num(v)       => v.shows
+        case Num(v)       => v.show
         case Mul(a, b)    =>
-          "Mul(" + show.shows(a) + ", " + show.shows(b) + ")"
+          "Mul(" + show.show(a) + ", " + show.show(b) + ")"
         case Var(s)       => "$" + s.name
-        case Lambda(p, a) => "Lambda(" + p.name + ", " + show.shows(a) + ")"
+        case Lambda(p, a) => "Lambda(" + p.name + ", " + show.show(a) + ")"
         case Apply(f, a)  =>
-          "Apply(" + show.shows(f) + ", " + show.shows(a) + ")"
+          "Apply(" + show.show(f) + ", " + show.show(a) + ")"
         case Let(n, v, i) =>
-          "Let(" + n.name + ", " + show.shows(v) + ", " + show.shows(i) + ")"
+          "Let(" + n.name + ", " + show.show(v) + ", " + show.show(i) + ")"
       }
   }
+}
 
-  implicit val unzip = new Alternative[Exp] {
+trait ExpInstances {
+  implicit val alternative = new Alternative[Exp] {
     def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
   }
 }

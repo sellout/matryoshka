@@ -25,15 +25,16 @@ import scala.Predef.{implicitly => imp}
 
 import cats._
 import cats.implicits._
+import cats.laws.discipline._
 import org.scalacheck._
 import org.specs2.ScalaCheck
 import org.specs2.mutable._
-import scalaz.scalacheck.ScalazProperties._
+import org.typelevel.discipline.specs2.mutable._
 
 class ListFSpec extends Specification with ScalaCheck with AlgebraChecks {
   "ListF" >> {
-    addFragments(properties(equal.laws[ListF[String, Int]]))
-    addFragments(properties(bitraverse.laws[ListF]))
+    // checkAll("ListF[String, Int]", EqTests[ListF[String, Int]].eqv)
+    checkAll("ListF", BitraverseTests[ListF].bitraverse)
 
     checkAlgebraIsoLaws(
       "ListF ⇔ List", ListF.listIso[Int])(

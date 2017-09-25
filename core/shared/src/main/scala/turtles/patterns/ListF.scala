@@ -73,14 +73,14 @@ object ListF {
     }
 
   implicit def bitraverse: Bitraverse[ListF] = new Bitraverse[ListF] {
-      def bitraverse[G[_], A, B, C, D](
-        fab: ListF[A, B])(
-        f: A ⇒ G[C], g: B ⇒ G[D])(
-        implicit G: Applicative[G]) =
-        fab match {
-          case NilF()      => G.pure(NilF())
-          case ConsF(a, b) => (f(a), g(b)).mapN(ConsF(_, _))
-        }
+    def bitraverse[G[_], A, B, C, D](
+      fab: ListF[A, B])(
+      f: A ⇒ G[C], g: B ⇒ G[D])(
+      implicit G: Applicative[G]) =
+      fab match {
+        case NilF()      => G.pure(NilF())
+        case ConsF(a, b) => (f(a), g(b)).mapN(ConsF(_, _))
+      }
 
     def bifoldLeft[A, B, C](
       fab: ListF[A,B],c: C)(
@@ -97,5 +97,5 @@ object ListF {
         case NilF()      => c
         case ConsF(a, b) => f(a, g(b, c))
       }
-    }
+  }
 }

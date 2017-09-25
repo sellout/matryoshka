@@ -912,6 +912,9 @@ package object turtles {
         BirecursiveT[T].anaT[F, A](a)(f)
     }
 
+  implicit def orderTOrder[T[_[_]], F[_]: Functor](implicit T: OrderT[T], F: Delay[Order, F]): Order[T[F]] =
+    T.orderT[F](F)
+
   implicit def eqTEq[T[_[_]], F[_]: Functor](implicit T: EqT[T], F: Delay[Eq, F]): Eq[T[F]] =
     T.eqT[F](F)
 

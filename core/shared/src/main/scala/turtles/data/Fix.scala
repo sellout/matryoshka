@@ -18,27 +18,26 @@ package turtles.data
 
 import turtles._
 
-import scala.Unit
-
 import cats._
 
 /** This is the simplest fixpoint type, implemented with general recursion.
   */
 final case class Fix[F[_]](unFix: F[Fix[F]])
 
-object Fix {
+object Fix extends FixInstances
+
+abstract class FixInstances extends FixInstancesʹ {
   implicit def birecursiveT: BirecursiveT[Fix] = new BirecursiveT[Fix] {
     def projectT[F[_]: Functor](t: Fix[F]) = t.unFix
 
     def embedT[F[_]: Functor](t: F[Fix[F]]) = Fix(t)
   }
 
-  implicit val equalT: EqT[Fix] = EqT.recursiveT
-
-  // TODO: Use OrderT
-  implicit def order[F[_]: Traverse](implicit F: Order[F[Unit]])
-      : Order[Fix[F]] =
-    Birecursive.order[Fix[F], F]
+  implicit def orderT: OrderT[Fix] = OrderT.recursiveT
 
   implicit val showT: ShowT[Fix] = ShowT.recursiveT
+}
+
+abstract class FixInstancesʹ {
+  implicit val equalT: EqT[Fix] = EqT.recursiveT
 }
