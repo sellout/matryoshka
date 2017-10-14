@@ -19,7 +19,6 @@ package turtles
 import cats._
 import cats.derived.functor._
 import cats.derived.functor.legacy._
-import cats.functor._
 
 /** This package contains derivable instances for various types that are
   * required by Turtles.

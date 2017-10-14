@@ -22,7 +22,6 @@ import turtles.derived._
 
 import cats._
 import cats.free._
-import cats.functor._
 import cats.implicits._
 
 /** The pattern functor for Free. */

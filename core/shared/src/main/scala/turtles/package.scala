@@ -26,7 +26,6 @@ import cats._
 import cats.arrow._
 import cats.data._
 import cats.free._
-import cats.functor._
 import cats.implicits._
 import monocle._
 
