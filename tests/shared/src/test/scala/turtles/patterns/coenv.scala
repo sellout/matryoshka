@@ -16,10 +16,10 @@
 
 package turtles.patterns
 
+import cats.kernel.laws.discipline.EqTests
 import slamdata.Predef.{ String, Int }
 import turtles.data._
 import turtles.exp.Exp
-import cats.kernel.laws.discipline.EqTests
 import turtles.helpers.TurtlesSuite
 
 class CoEnvSpec extends TurtlesSuite {

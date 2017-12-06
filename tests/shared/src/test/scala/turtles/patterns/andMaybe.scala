@@ -16,9 +16,9 @@
 
 package turtles.patterns
 
+import cats.laws.discipline.BitraverseTests
 import slamdata.Predef.Int
 import turtles.helpers.TurtlesSuite
-import cats.laws.discipline.BitraverseTests
 
 class AndMaybeSpec extends TurtlesSuite {
   // checkAll("AndMaybe[String, Int]", EqTests[AndMaybe[String, Int]].eqv)
