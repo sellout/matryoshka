@@ -6,9 +6,9 @@ import sbt._
 import Keys._
 import slamdata.SbtSlamData.transferPublishAndTagResources
 
-lazy val catsVersion = "1.0.0-SNAPSHOT"
-lazy val monocleVersion = "1.5.0-cats-M1"
-lazy val specs2Version = "3.8.7"
+lazy val catsVersion = "1.0.0-RC1"
+lazy val monocleVersion = "1.5.0-cats-M2"
+lazy val specs2Version = "4.0.0"
 
 lazy val standardSettings = commonBuildSettings ++ Seq(
   logBuffered in Compile := false,
@@ -26,9 +26,10 @@ lazy val standardSettings = commonBuildSettings ++ Seq(
     "com.slamdata"               %% "slamdata-predef" % "0.0.2",
     "org.typelevel"              %% "cats-core"       % catsVersion    % "compile, test",
     "org.typelevel"              %% "cats-free"       % catsVersion    % "compile, test",
-    "org.typelevel"              %% "kittens"         % "1.0.0-M11"    % "compile, test",
+    "org.typelevel"              %% "cats-testkit"    % catsVersion    % "compile, test",
+    // "org.typelevel"              %% "kittens"         % "1.0.0-RC1"    % "compile, test",
     "com.github.julien-truffaut" %% "monocle-core"    % monocleVersion % "compile, test",
-    "com.github.julien-truffaut" %% "newts-core"      % "0.3.0-MF-2"   % "compile, test",
+    // "com.github.julien-truffaut" %% "newts-core"      % "0.3.0-MF-2"   % "compile, test",
     "com.github.mpilquist"       %% "simulacrum"      % "0.10.0"       % "compile, test"))
 
 lazy val publishSettings = commonPublishSettings ++ Seq(
@@ -64,7 +65,8 @@ lazy val scalacheck = crossProject
   .settings(libraryDependencies ++= Seq(
     // NB: Needs a version of Scalacheck with rickynils/scalacheck#301.
     "org.scalacheck"      %% "scalacheck"      % "1.14.0-861f58e-SNAPSHOT",
-    "io.github.amrhassan" %% "scalacheck-cats" % "0.3.2"))
+    "io.github.amrhassan" %% "scalacheck-cats" % "0.3.4-SNAPSHOT")
+  )
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val tests = crossProject

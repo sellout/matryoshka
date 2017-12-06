@@ -16,17 +16,17 @@
 
 package turtles.patterns
 
-import slamdata.Predef.{Eq => _, _}
+// import slamdata.Predef.{Eq => _, _}
 import turtles._
-import turtles.data.Fix
-import turtles.exp._
+// import turtles.data.Fix
+// import turtles.exp._
 import turtles.scalacheck.arbitrary._
 
-import cats._
-import cats.implicits._
-import cats.laws.discipline._
+// import cats._
+// import cats.implicits._
+// import cats.laws.discipline._
 import org.scalacheck._
-import org.specs2.ScalaCheck
+// import org.specs2.ScalaCheck
 import org.specs2.mutable._
 import org.typelevel.discipline.specs2.mutable._
 
@@ -42,9 +42,9 @@ class PotentialFailureSpec extends Specification with Discipline {
           F(arb).arbitrary.map(PartialFailure[T, F, E, α](_))))
     }
 
-  "PotentialFailure" >> {
-    // checkAll("PotentialFailure[Fix, Exp, String, Int]", EqTests[PotentialFailure[Fix, Exp, String, Int]].eqv)
-    checkAll("PotentialFailure[Fix, Exp, ?, ?]", BitraverseTests[PotentialFailure[Fix, Exp, ?, ?]].bitraverse)
-    checkAll("PotentialFailure[Fix, Exp, String, ?]", TraverseTests[PotentialFailure[Fix, Exp, String, ?]].traverse)
-  }
+  // "PotentialFailure" >> {
+  //   // checkAll("PotentialFailure[Fix, Exp, String, Int]", EqTests[PotentialFailure[Fix, Exp, String, Int]].eqv)
+  //   checkAll("PotentialFailure[Fix, Exp, ?, ?]", BitraverseTests[PotentialFailure[Fix, Exp, ?, ?]].bitraverse)
+  //   checkAll("PotentialFailure[Fix, Exp, String, ?]", TraverseTests[PotentialFailure[Fix, Exp, String, ?]].traverse)
+  // }
 }

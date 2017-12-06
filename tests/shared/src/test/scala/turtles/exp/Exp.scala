@@ -21,11 +21,12 @@ import turtles._
 import turtles.implicits._
 
 import cats._
+import cats.data.State
 import cats.implicits._
 import org.scalacheck._
 import org.scalacheck.support.cats._
 
-sealed abstract class Exp[A]
+sealed abstract class Exp[A] extends Product with Serializable
 case class Num[A](value: Int) extends Exp[A]
 case class Mul[A](left: A, right: A) extends Exp[A]
 case class Var[A](value: Symbol) extends Exp[A]
@@ -53,7 +54,14 @@ object Exp extends ExpInstances {
   }
 
   implicit val traverse: Traverse[Exp] = new Traverse[Exp] {
-    def traverseImpl[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
+
+    def foldLeft[A, B](fa: Exp[A], b: B)(f: (B, A) => B): B =
+    	traverse(fa)(a => State((b: B) => (f(b, a), ()))).runS(b).value
+
+    def foldRight[A, B](fa: Exp[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+    	traverse(fa)(a => State((lb: Eval[B]) => (f(a, lb), ()))).runS(lb).value
+
+    def traverse[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
       case Num(v)           => G.pure(Num(v))
       case Mul(left, right) => (f(left), f(right)).mapN(Mul(_, _))
       case Var(v)           => G.pure(Var(v))
@@ -107,7 +115,16 @@ object Exp extends ExpInstances {
 }
 
 trait ExpInstances {
-  implicit val alternative = new Alternative[Exp] {
-    def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
-  }
+  // implicit val alternative = new Alternative[Exp] {
+  //   // Members declared in cats.Applicative
+  //   def pure[A](x: A): turtles.exp.Exp[A] = ???
+  //   // Members declared in cats.Apply
+  //   def ap[A, B](ff: turtles.exp.Exp[A => B])(fa: turtles.exp.Exp[A]): turtles.exp.Exp[B] = ???
+  //   // Members declared in cats.MonoidK
+  //   def empty[A]: turtles.exp.Exp[A] = ???
+  //   // Members declared in cats.SemigroupK
+  //   def combineK[A](x: turtles.exp.Exp[A],y: turtles.exp.Exp[A]): turtles.exp.Exp[A] = ???
+  //
+  //   def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
+  // }
 }

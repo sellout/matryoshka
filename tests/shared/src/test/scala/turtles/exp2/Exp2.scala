@@ -20,6 +20,7 @@ import slamdata.Predef.{Eq => _, _}
 import turtles._
 
 import cats._
+import cats.data.State
 import cats.implicits._
 import org.scalacheck._
 
@@ -40,7 +41,14 @@ object Exp2 {
   // NB: This isn’t implicit in order to allow us to test our low-priority
   //     instances for CoEnv.
   val traverse: Traverse[Exp2] = new Traverse[Exp2] {
-    def traverseImpl[G[_], A, B](
+
+    def foldLeft[A, B](fa: Exp2[A], b: B)(f: (B, A) => B): B =
+      traverse(fa)(a => State((b: B) => (f(b, a), ()))).runS(b).value
+
+    def foldRight[A, B](fa: Exp2[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+      traverse(fa)(a => State((lb: Eval[B]) => (f(a, lb), ()))).runS(lb).value
+
+    def traverse[G[_], A, B](
       fa: Exp2[A])(
       f: (A) ⇒ G[B])(
       implicit G: Applicative[G]) =
@@ -49,6 +57,7 @@ object Exp2 {
         case Num2(v)   => G.pure(Num2[B](v))
         case Single(a) => f(a).map(Single(_))
       }
+
   }
 
   implicit val functor: Functor[Exp2] = traverse

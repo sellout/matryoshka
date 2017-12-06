@@ -16,64 +16,51 @@
 
 package turtles.instances.fixedpoint
 
-import slamdata.Predef.{Eq => _, _}
-import turtles._, CatsMatchers._
+import slamdata.Predef.{ Int, Some, None }
+import turtles._
 import turtles.data._
 import turtles.derived._
 import turtles.implicits._
-import turtles.patterns._
-import turtles.scalacheck.arbitrary._
+import turtles.helpers.TurtlesSuite
+import turtles.patterns.ListF
+import cats.laws.discipline.FoldableTests
 
-import cats.implicits._
-import cats.laws.discipline._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
+class ListSpec extends TurtlesSuite {
 
-class ListSpec extends Specification with Discipline {
-  "List laws" >> {
-    // checkAll("List[Int]", EqTests[List[Int]].eqv)
-    checkAll("List", FoldableTests[List].foldable[Int, Int])
+  // checkAll("List[Int]", EqTests[List[Int]].eqv)
+  checkAll("List", FoldableTests[List].foldable[Int, Int])
+
+  test("List.apply should be equivalent to scala.List.apply") {
+    List(1, 2, 3, 4).cata(ListF.listIso.get) should === (scala.List(1, 2, 3, 4))
   }
 
-
-  "apply" should {
-    "be equivalent to scala.List.apply" >> {
-      List(1, 2, 3, 4).cata(ListF.listIso.get) must
-        be eqv(scala.List(1, 2, 3, 4))
+  test("List.fill should be equivalent to scala.List.fill") {
+    forAll { (n: Nat, v: Int) =>
+      List.fill[scala.List[Int]](n)(v) should === (scala.List.fill(n.toInt)(v))
     }
   }
 
-  "fill" should {
-    "be equivalent to scala.List.fill" >> prop { (n: Nat, v: Int) =>
-      List.fill[scala.List[Int]](n)(v) must
-        be eqv(scala.List.fill(n.toInt)(v))
+  test("List.length should count the number of elements") {
+    forAll { (n: Nat, v: Int) =>
+      List.fill[List[Int]](n)(v).length should === (n.toInt)
     }
   }
 
-  "length" should {
-    "count the number of elements" >> prop { (n: Nat, v: Int) =>
-      List.fill[List[Int]](n)(v).length must be eqv(n.toInt)
-    }
+  test("List.headOption should return the first element") {
+    List(1, 2, 3, 4).headOption should === (Some(1))
   }
 
-  "headOption" should {
-    "return the first element" in {
-      List(1, 2, 3, 4).headOption must beSome(1)
-    }
-
-    "if there is one" in {
-      List().headOption must beNone
-    }
+  test("List.headOption should return None for an empty list") {
+    List[Int]().headOption should === (None)
   }
 
-  "tailOption" should {
-    "return the remainder of the list" in {
-      List(1, 2, 3, 4).tailOption must be eqv(List(2, 3, 4).some)
-      List(1).tailOption must be eqv(List[Int]().some)
-    }
-
-    "if there is one" in {
-      List().tailOption must beNone
-    }
+  test("tailOption should return the remainder of the list") {
+    List(1, 2, 3, 4).tailOption should === (List(2, 3, 4).some)
+    List(1).tailOption should === (List[Int]().some)
   }
+
+  test("tailOption should return None for an empty list ") {
+    List[Int]().tailOption should === (None)
+  }
+
 }

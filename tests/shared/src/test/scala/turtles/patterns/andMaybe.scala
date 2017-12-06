@@ -16,20 +16,11 @@
 
 package turtles.patterns
 
-import slamdata.Predef.{Eq => _, _}
-import turtles._
-import turtles.helpers._
-import turtles.scalacheck.arbitrary._
+import slamdata.Predef.Int
+import turtles.helpers.TurtlesSuite
+import cats.laws.discipline.BitraverseTests
 
-import cats.implicits._
-import cats.laws.discipline._
-import org.scalacheck.Arbitrary._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
-
-class AndMaybeSpec extends Specification with Discipline with AlgebraChecks {
-  "AndMaybe" >> {
-    // checkAll("AndMaybe[String, Int]", EqTests[AndMaybe[String, Int]].eqv)
-    checkAll("AndMaybe", BitraverseTests[AndMaybe].bitraverse[(Int, ?), Int, Int, Int, Int, Int, Int])
-  }
+class AndMaybeSpec extends TurtlesSuite {
+  // checkAll("AndMaybe[String, Int]", EqTests[AndMaybe[String, Int]].eqv)
+  checkAll("AndMaybe", BitraverseTests[AndMaybe].bitraverse[(Int, ?), Int, Int, Int, Int, Int, Int])
 }

@@ -16,31 +16,21 @@
 
 package turtles.instances.fixedpoint
 
-import turtles._, CatsMatchers._
-import turtles.data._
+import turtles._
+import turtles.helpers.TurtlesSuite
 import turtles.implicits._
-import turtles.scalacheck.arbitrary._
 
-import cats._
-import cats.implicits._
-import cats.laws.discipline._
-// import monocle.law.discipline._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
+class NatSpec extends TurtlesSuite {
 
-class NatSpec extends Specification with Discipline {
   // FIXME: Need to restrict this to smaller numbers
   // checkAll("Nat ⇔ Int Prism", PrismTests(Nat.intPrism[Nat]))
+  // checkAll("Conat", OrderTests[Conat].order)
 
-  "Nat" >> {
-    // checkAll("Conat", OrderTests[Conat].order)
-    checkAll("Order[Conat]", SerializableTests.serializable(Order[Conat]))
-  }
-
-  "+" should {
-    "sum values" >> prop { (a: Nat, b: Nat) =>
+  test("+ should sum values") {
+    forAll { (a: Nat, b: Nat) =>
       val (ai, bi) = (a.cata(height), b.cata(height))
-      (a + b).cata(height) must be eqv(ai + bi)
+      (a + b).cata(height) should === (ai + bi)
     }
   }
+
 }

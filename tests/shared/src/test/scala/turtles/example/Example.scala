@@ -23,6 +23,7 @@ import turtles.patterns._
 import turtles.scalacheck.arbitrary._
 
 import cats._
+import cats.data.State
 import cats.implicits._
 import cats.laws.discipline._
 import org.scalacheck._
@@ -40,7 +41,14 @@ final case class TwoLists[A](first: List[A], second: List[A]) extends Example[A]
 
 object Example {
   implicit val traverse: Traverse[Example] = new Traverse[Example] {
-    def traverseImpl[G[_], A, B](fa: Example[A])(f: A => G[B])(
+
+    def foldLeft[A, B](fa: Example[A], b: B)(f: (B, A) => B): B =
+    	traverse(fa)(a => State((b: B) => (f(b, a), ()))).runS(b).value
+
+    def foldRight[A, B](fa: Example[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+    	traverse(fa)(a => State((lb: Eval[B]) => (f(a, lb), ()))).runS(lb).value
+
+    def traverse[G[_], A, B](fa: Example[A])(f: A => G[B])(
       implicit G: Applicative[G]):
         G[Example[B]] = fa match {
       case Empty()        => G.pure(Empty())
