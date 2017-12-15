@@ -65,7 +65,7 @@ lazy val scalacheck = crossProject
   .settings(libraryDependencies ++= Seq(
     // NB: Needs a version of Scalacheck with rickynils/scalacheck#301.
     "org.scalacheck"      %% "scalacheck"      % "1.14.0-861f58e-SNAPSHOT",
-    "io.github.amrhassan" %% "scalacheck-cats" % "0.3.4-SNAPSHOT")
+    "io.github.amrhassan" %% "scalacheck-cats" % "0.4.0")
   )
   .enablePlugins(AutomateHeaderPlugin)
 
@@ -74,6 +74,7 @@ lazy val tests = crossProject
   .dependsOn(core, scalacheck)
   .settings(standardSettings ++ noPublishSettings: _*)
   .settings(libraryDependencies ++= Seq(
+    "io.github.amrhassan"        %% "scalacheck-cats"   % "0.4.0" % Test,
     "org.typelevel"              %% "cats-laws"         % catsVersion % Test,
     "com.github.julien-truffaut" %% "monocle-law"       % monocleVersion % Test,
     "org.specs2"                 %% "specs2-core"       % specs2Version % Test,
