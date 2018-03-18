@@ -776,7 +776,7 @@ package object turtles {
     * @group algebras
     */
   def height[F[_]: Foldable]: Algebra[F, Int] =
-    _.foldRight(Eval.now(-1))((a, b) => b.map(a max _).map(_ + 1)).value
+    _.foldRight(Eval.now(-1))((a, b) => b.map(a max _)).map(_ + 1).value
 
   /** Collects the set of all subtrees.
     *
