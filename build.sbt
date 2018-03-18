@@ -6,8 +6,8 @@ import sbt._
 import Keys._
 import slamdata.SbtSlamData.transferPublishAndTagResources
 
-lazy val catsVersion = "1.0.0-RC1"
-lazy val monocleVersion = "1.5.0-cats-M2"
+lazy val catsVersion = "1.1.0"
+lazy val monocleVersion = "1.5.0-cats"
 lazy val specs2Version = "4.0.0"
 
 lazy val standardSettings = commonBuildSettings ++ Seq(
