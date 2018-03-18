@@ -55,9 +55,9 @@ class StreamSpec extends TurtlesSuite {
   // FIXME: These two blow up the stack with much larger inputs
 
   test("constantly shuold have the given value at an arbitrary point") {
-    forAll { (i: Int, d: Int) =>
+    forAll { (i: Int) =>
       350.anaM[Nat](Nat.fromInt).map(
-        i.ana[Stream[Int]](constantly).drop(_).head) should === (1.some)
+        i.ana[Stream[Int]](constantly).drop(_).head) should === (i.some)
     }
   }
 
