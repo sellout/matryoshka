@@ -25,7 +25,7 @@ import turtles.scalacheck.arbitrary._
 import cats._
 import cats.data.State
 import cats.implicits._
-import cats.laws.discipline._
+// import cats.laws.discipline._
 import org.scalacheck._
 import org.scalacheck.support.cats._
 import org.specs2.mutable._
@@ -129,8 +129,8 @@ object Example {
 }
 
 class ExampleSpec extends Specification with Discipline {
-  "Example" >> {
+  // "Example" >> {
     // checkAll("Example[Int]", EqTests[Example[Int]].eqv)
-    checkAll("Example", TraverseTests[Example].traverse[Int, Int, Int, Int, (Int, ?), (Int, ?)])
-  }
+    // checkAll("Example", TraverseTests[Example].traverse[Int, Int, Int, Int, (Int, ?), (Int, ?)])
+  // }
 }

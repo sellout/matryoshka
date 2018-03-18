@@ -16,8 +16,8 @@
 
 package turtles.patterns
 
-import slamdata.Predef.{Eq => _, _}
-import turtles._
+// import slamdata.Predef.{Eq => _, _}
+// import turtles._
 // import turtles.data.Mu
 // import turtles.example._
 // import turtles.exp._
@@ -25,37 +25,37 @@ import turtles.helpers._
 // import turtles.implicits._
 // import turtles.scalacheck.arbitrary._
 
-import scala.Predef.implicitly
+// import scala.Predef.implicitly
 
 // import cats._
 // import cats.implicits._
 // import cats.laws.discipline._
-import org.scalacheck._
+// import org.scalacheck._
 // import org.specs2.ScalaCheck
 // import org.specs2.mutable._
 // import org.typelevel.discipline.specs2.mutable._
 
 class DiffSpec extends TurtlesSuite {
 
-  implicit val blah: cats.Functor[Gen] = scala.Predef.??? : cats.Functor[Gen]
-  implicit val blax: cats.Semigroupal[Gen] = scala.Predef.??? : cats.Semigroupal[Gen]
+  // implicit val blah: cats.Functor[Gen] = scala.Predef.??? : cats.Functor[Gen]
+  // implicit val blax: cats.Semigroupal[Gen] = scala.Predef.??? : cats.Semigroupal[Gen]
 
-  implicit def diffArbitrary[T[_[_]], F[_]](
-    implicit T: Arbitrary[T[F]], F: Delay[Arbitrary, F]):
-      Delay[Arbitrary, Diff[T, F, ?]] =
-    new Delay[Arbitrary, Diff[T, F, ?]] {
-      def apply[α](arb: Arbitrary[α]) =
-        Arbitrary(Gen.oneOf(
-          T.arbitrary.map(Same[T, F, α](_)),
-          F(arb).arbitrary.map(Similar[T, F, α](_)),
-          (T.arbitrary, T.arbitrary).mapN(Different[T, F, α](_, _)),
-          (F(arb).arbitrary, F[Unit](implicitly).arbitrary).mapN(
-            LocallyDifferent[T, F, α](_, _)),
-          F(arb).arbitrary.map(Inserted[T, F, α](_)),
-          F(arb).arbitrary.map(Deleted[T, F, α](_)),
-          T.arbitrary.map(Added[T, F, α](_)),
-          T.arbitrary.map(Removed[T, F, α](_))))
-    }
+  // implicit def diffArbitrary[T[_[_]], F[_]](
+  //   implicit T: Arbitrary[T[F]], F: Delay[Arbitrary, F]):
+  //     Delay[Arbitrary, Diff[T, F, ?]] =
+  //   new Delay[Arbitrary, Diff[T, F, ?]] {
+  //     def apply[α](arb: Arbitrary[α]) =
+  //       Arbitrary(Gen.oneOf(
+  //         T.arbitrary.map(Same[T, F, α](_)),
+  //         F(arb).arbitrary.map(Similar[T, F, α](_)),
+  //         (T.arbitrary, T.arbitrary).mapN(Different[T, F, α](_, _)),
+  //         (F(arb).arbitrary, F[Unit](implicitly).arbitrary).mapN(
+  //           LocallyDifferent[T, F, α](_, _)),
+  //         F(arb).arbitrary.map(Inserted[T, F, α](_)),
+  //         F(arb).arbitrary.map(Deleted[T, F, α](_)),
+  //         T.arbitrary.map(Added[T, F, α](_)),
+  //         T.arbitrary.map(Removed[T, F, α](_))))
+  //   }
 
   // checkAll("Diff[Mu, Exp, Int]", EqTests[Diff[Mu, Exp, Int]].eqv)
   // checkAll("Diff[Mu, Exp, ?]", TraverseTests[Diff[Mu, Exp, ?]].traverse)
