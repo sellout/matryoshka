@@ -93,7 +93,8 @@ class PartialSpec extends TurtlesSuite {
       .unsafePerformSync should === (())
   }
 
-  val mc91LowerBound = -97000
+  // NB: Reduced from -97000 with Scalaz.
+  val mc91LowerBound = -90000
 
   // NB: This is because the following test doesn't always get close to the
   //     lower bound, so we make sure changes don't make things worse.
