@@ -24,7 +24,12 @@ import org.specs2.matcher._
 import org.specs2.mutable.SpecificationLike
 import cats._
 
-package object runners extends SpecificationLike {
+package object runners {
+
+  // TODO: this, better
+  private val m = new SpecificationLike {}
+  import m._
+
   def testRec[F[_], A](t: Fix[F], r: RecRunner[F, A])(implicit F: Functor[F])
       : MatchResult[A] = {
     r.run[Fix[F]].apply(t) and

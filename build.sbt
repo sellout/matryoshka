@@ -1,5 +1,5 @@
 import de.heikoseeberger.sbtheader.HeaderPlugin
-import de.heikoseeberger.sbtheader.license.Apache2_0
+import de.heikoseeberger.sbtheader.License.ALv2
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
 import scoverage._
 import sbt._
@@ -85,7 +85,7 @@ lazy val docs = project
   .settings(name := "turtles-docs")
   .dependsOn(coreJVM)
   .settings(standardSettings ++ noPublishSettings: _*)
-  .settings(tutScalacOptions --= Seq("-Yno-imports", "-Ywarn-unused-import"))
+  .settings(scalacOptions in Tut --= Seq("-Yno-imports", "-Ywarn-unused-import"))
   .enablePlugins(MicrositesPlugin)
   .settings(
     micrositeName             := "Turtles",

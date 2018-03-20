@@ -23,10 +23,9 @@ import cats._
 import cats.data._
 import cats.implicits._
 import org.scalacheck._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
 
-package object helpers extends SpecificationLike with Discipline {
+package object helpers {
+
   def foldableCogen[F[_]: Foldable]: Delay[Cogen, F] =
     new Delay[Cogen, F] {
       def apply[A](cog: Cogen[A]): Cogen[F[A]] =
