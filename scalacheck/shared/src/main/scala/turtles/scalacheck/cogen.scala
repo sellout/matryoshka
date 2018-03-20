@@ -58,6 +58,15 @@ trait CogenInstances extends CogenInstancesʹ {
         Cogen((seed, value) => value.run.fold(Cogen[A].perturb(seed, _), F(b).perturb(seed.next, _)))
     }
 
+  implicit def listFCogen[A: Cogen]: Delay[Cogen, ListF[A, ?]] =
+    new Delay[Cogen, ListF[A, ?]] {
+      def apply[B](b: Cogen[B]) =
+        Cogen((seed, value) => value match {
+          case ConsF(h, t) => b.perturb(Cogen[A].perturb(seed, h), t)
+          case NilF()      => seed
+        })
+    }
+
   implicit def envTCogen[F[_], A: Cogen](implicit F: Delay[Cogen, F]): Delay[Cogen, EnvT[A, F, ?]] =
     new Delay[Cogen, EnvT[A, F, ?]] {
       def apply[B](b: Cogen[B]) =

@@ -23,11 +23,12 @@ import turtles.derived._
 import turtles.implicits._
 import turtles.helpers.TurtlesSuite
 import turtles.patterns.ListF
+import cats.kernel.laws.discipline.EqTests
 // import cats.laws.discipline.FoldableTests
 
 class ListSpec extends TurtlesSuite {
 
-  // checkAll("List[Int]", EqTests[List[Int]].eqv)
+  checkAll("List[Int]", EqTests[List[Int]].eqv)
   // checkAll("List", FoldableTests[List].foldable[Int, Int])
 
   test("List.apply should be equivalent to scala.List.apply") {
