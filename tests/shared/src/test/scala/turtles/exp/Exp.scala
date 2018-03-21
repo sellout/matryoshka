@@ -21,7 +21,6 @@ import turtles._
 import turtles.implicits._
 
 import cats._
-import cats.data.State
 import cats.implicits._
 import org.scalacheck._
 import org.scalacheck.support.cats._
@@ -55,11 +54,25 @@ object Exp extends ExpInstances {
 
   implicit val traverse: Traverse[Exp] = new Traverse[Exp] {
 
-    def foldLeft[A, B](fa: Exp[A], b: B)(f: (B, A) => B): B =
-    	traverse(fa)(a => State((b: B) => (f(b, a), ()))).runS(b).value
+    def foldLeft[A, B](fa: Exp[A], b: B)(f: (B, A) => B) =
+      fa match {
+        case Num(_)           => b
+        case Mul(left, right) => f(f(b, left), right)
+        case Var(_)           => b
+        case Lambda(_, body)  => f(b, body)
+        case Apply(func, arg) => f(f(b, func), arg)
+        case Let(_, v, i)     => f(f(b, v), i)
+      }
 
-    def foldRight[A, B](fa: Exp[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
-    	traverse(fa)(a => State((lb: Eval[B]) => (f(a, lb), ()))).runS(lb).value
+    def foldRight[A, B](fa: Exp[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]) =
+      fa match {
+        case Num(_)           => lb
+        case Mul(left, right) => f(left, f(right, lb))
+        case Var(_)           => lb
+        case Lambda(_, b)     => f(b, lb)
+        case Apply(func, arg) => f(func, f(arg, lb))
+        case Let(_, v, i)     => f(v, f(i, lb))
+      }
 
     def traverse[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
       case Num(v)           => G.pure(Num(v))
