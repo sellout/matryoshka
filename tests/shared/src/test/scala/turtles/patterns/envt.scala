@@ -16,25 +16,13 @@
 
 package turtles.patterns
 
-import slamdata.Predef.{Eq => _, _}
-import turtles._
+import slamdata.Predef.Int
 import turtles.data.cofree._
-import turtles.exp._
-import turtles.helpers._
-import turtles.scalacheck.arbitrary._
-import turtles.scalacheck.cogen._
+import turtles.exp.Exp
+import turtles.helpers.TurtlesSuite
 
-import cats._
-import cats.implicits._
-import cats.laws.discipline._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
-
-class EnvTSpec extends Specification with Discipline with AlgebraChecks {
-  "EnvT" >> {
-    // checkAll("EnvT[String, Exp, Int]", EqTests[EnvT[String, Exp, Int]].eqv)
-    checkAll("EnvT[String, NonEmptyList, ?]", ComonadTests[EnvT[String, NonEmptyList, ?]].comonad)
-
-    checkAlgebraIsoLaws("EnvT ⇔ Cofree", EnvT.cofreeIso[Int, Exp])
-  }
+class EnvTSpec extends TurtlesSuite {
+  // checkAll("EnvT[String, Exp, Int]", EqTests[EnvT[String, Exp, Int]].eqv)
+  // checkAll("EnvT[String, NonEmptyList, ?]", ComonadTests[EnvT[String, NonEmptyList, ?]].comonad)
+  checkAlgebraIsoLaws("EnvT ⇔ Cofree", EnvT.cofreeIso[Int, Exp])
 }

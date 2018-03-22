@@ -54,5 +54,5 @@ abstract class NuInstances extends NuInstancesʹ {
 }
 
 abstract class NuInstancesʹ {
-  implicit val equalT: EqT[Nu] = EqT.recursiveT
+  implicit lazy val equalT: EqT[Nu] = EqT.recursiveT
 }

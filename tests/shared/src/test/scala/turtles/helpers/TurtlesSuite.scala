@@ -16,19 +16,20 @@
 
 package turtles.helpers
 
-import turtles._
-import turtles.scalacheck.arbitrary._
-import turtles.scalacheck.cogen._
-
+import cats.{ Eq, Functor, Traverse }
+import cats.tests.CatsSuite
 import java.lang.String
+import monocle.law.discipline.{ IsoTests, PrismTests }
+import org.scalacheck.{ Arbitrary, Cogen }
+import turtles._
+import turtles.scalacheck.ArbitraryInstances
+import turtles.scalacheck.CogenInstances
 
-import cats._
-import monocle.law.discipline._
-import org.scalacheck._
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
+trait TurtlesSuite
+  extends CatsSuite
+     with ArbitraryInstances
+     with CogenInstances {
 
-trait AlgebraChecks extends SpecificationLike with Discipline {
   def checkFoldIsoLaws
     [T: Arbitrary: Eq, F[_]: Functor, A: Arbitrary: Eq: Cogen]
     (name: String, iso: AlgebraIso[F, A])

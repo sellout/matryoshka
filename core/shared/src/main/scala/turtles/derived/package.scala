@@ -17,14 +17,16 @@
 package turtles
 
 import cats._
-import cats.derived.functor._
-import cats.derived.functor.legacy._
 
 /** This package contains derivable instances for various types that are
   * required by Turtles.
   */
 package object derived extends DerivedInstances {
-  implicit def tuple3Functor[A, B] = Functor[(A, B, ?)]
+  implicit def tuple3Functor[A, B]: Functor[(A, B, ?)] =
+    new Functor[(A, B, ?)] {
+      def map[T, U](fa: (A, B, T))(f: T => U) =
+        (fa._1, fa._2, f(fa._3))
+    }
 }
 
 sealed abstract class DerivedInstances extends DerivedInstances1 {

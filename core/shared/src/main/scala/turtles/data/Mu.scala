@@ -47,5 +47,5 @@ abstract class MuInstances extends MuInstancesʹ {
 }
 
 abstract class MuInstancesʹ {
-  implicit val equalT: EqT[Mu] = EqT.recursiveT
+  implicit lazy val equalT: EqT[Mu] = EqT.recursiveT
 }

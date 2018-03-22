@@ -309,6 +309,7 @@ package object fixedpoint {
     def flatMap[A, B](fa: Partial[A])(f: A => Partial[B]) =
       fa.cata[Partial[B]](_.leftMap(f).merge)
 
+    @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def tailRecM[A, B](a: A)(f: A => Partial[Either[A,B]]): Partial[B] =
       f(a).flatMap(_.fold(tailRecM(_)(f), pure))
   }

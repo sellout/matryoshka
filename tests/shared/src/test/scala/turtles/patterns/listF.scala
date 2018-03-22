@@ -16,28 +16,15 @@
 
 package turtles.patterns
 
-import slamdata.Predef.{Eq => _, _}
-import turtles._
-import turtles.helpers._
-import turtles.scalacheck.arbitrary._
+import org.scalacheck.{ Arbitrary, Gen }
+import scala.Predef.{ implicitly => imp }
+import slamdata.Predef.Int
+import turtles.helpers.TurtlesSuite
 
-import scala.Predef.{implicitly => imp}
-
-import cats._
-import cats.implicits._
-import cats.laws.discipline._
-import org.scalacheck._
-import org.specs2.ScalaCheck
-import org.specs2.mutable._
-import org.typelevel.discipline.specs2.mutable._
-
-class ListFSpec extends Specification with ScalaCheck with AlgebraChecks {
-  "ListF" >> {
-    // checkAll("ListF[String, Int]", EqTests[ListF[String, Int]].eqv)
-    checkAll("ListF", BitraverseTests[ListF].bitraverse)
-
-    checkAlgebraIsoLaws(
-      "ListF ⇔ List", ListF.listIso[Int])(
-      Arbitrary(Gen.listOf(Arbitrary.arbInt.arbitrary)), imp, imp, imp, imp)
-  }
+class ListFSpec extends TurtlesSuite {
+  // checkAll("ListF[String, Int]", EqTests[ListF[String, Int]].eqv)
+  // checkAll("ListF", BitraverseTests[ListF].bitraverse)
+  checkAlgebraIsoLaws("ListF ⇔ List", ListF.listIso[Int])(
+    Arbitrary(Gen.listOf(Arbitrary.arbInt.arbitrary)), imp, imp, imp, imp
+  )
 }

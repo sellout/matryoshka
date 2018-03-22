@@ -25,7 +25,7 @@ import cats.implicits._
 import org.scalacheck._
 import org.scalacheck.support.cats._
 
-sealed abstract class Exp[A]
+sealed abstract class Exp[A] extends Product with Serializable
 case class Num[A](value: Int) extends Exp[A]
 case class Mul[A](left: A, right: A) extends Exp[A]
 case class Var[A](value: Symbol) extends Exp[A]
@@ -53,7 +53,28 @@ object Exp extends ExpInstances {
   }
 
   implicit val traverse: Traverse[Exp] = new Traverse[Exp] {
-    def traverseImpl[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
+
+    def foldLeft[A, B](fa: Exp[A], b: B)(f: (B, A) => B) =
+      fa match {
+        case Num(_)           => b
+        case Mul(left, right) => f(f(b, left), right)
+        case Var(_)           => b
+        case Lambda(_, body)  => f(b, body)
+        case Apply(func, arg) => f(f(b, func), arg)
+        case Let(_, v, i)     => f(f(b, v), i)
+      }
+
+    def foldRight[A, B](fa: Exp[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]) =
+      fa match {
+        case Num(_)           => lb
+        case Mul(left, right) => f(left, f(right, lb))
+        case Var(_)           => lb
+        case Lambda(_, b)     => f(b, lb)
+        case Apply(func, arg) => f(func, f(arg, lb))
+        case Let(_, v, i)     => f(v, f(i, lb))
+      }
+
+    def traverse[G[_], A, B](fa: Exp[A])(f: A => G[B])(implicit G: Applicative[G]): G[Exp[B]] = fa match {
       case Num(v)           => G.pure(Num(v))
       case Mul(left, right) => (f(left), f(right)).mapN(Mul(_, _))
       case Var(v)           => G.pure(Var(v))
@@ -107,7 +128,16 @@ object Exp extends ExpInstances {
 }
 
 trait ExpInstances {
-  implicit val alternative = new Alternative[Exp] {
-    def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
-  }
+  // implicit val alternative = new Alternative[Exp] {
+  //   // Members declared in cats.Applicative
+  //   def pure[A](x: A): turtles.exp.Exp[A] = ???
+  //   // Members declared in cats.Apply
+  //   def ap[A, B](ff: turtles.exp.Exp[A => B])(fa: turtles.exp.Exp[A]): turtles.exp.Exp[B] = ???
+  //   // Members declared in cats.MonoidK
+  //   def empty[A]: turtles.exp.Exp[A] = ???
+  //   // Members declared in cats.SemigroupK
+  //   def combineK[A](x: turtles.exp.Exp[A],y: turtles.exp.Exp[A]): turtles.exp.Exp[A] = ???
+  //
+  //   def unzip[A, B](f: Exp[(A, B)]) = (f.map(_._1), f.map(_._2))
+  // }
 }

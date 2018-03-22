@@ -686,9 +686,9 @@ package object turtles {
     *
     * @group algtrans
     */
-  implicit def GAlgebraCartesian[W[_]: Functor, F[_]: Functor]:
-      Cartesian[GAlgebra[W, F, ?]] =
-    new Cartesian[GAlgebra[W, F, ?]] {
+  implicit def GAlgebraSemigroupal[W[_]: Functor, F[_]: Functor]:
+      Semigroupal[GAlgebra[W, F, ?]] =
+    new Semigroupal[GAlgebra[W, F, ?]] {
       def product[A, B](a: GAlgebra[W, F, A], b: GAlgebra[W, F, B]) =
         node => (a(node.map(_.map(_._1))), b(node.map(_.map(_._2))))
     }
@@ -696,15 +696,15 @@ package object turtles {
     *
     * @group algtrans
     */
-  implicit def AlgebraCartesian[F[_]: Functor] = GAlgebraCartesian[Id, F]
+  implicit def AlgebraSemigroupal[F[_]: Functor] = GAlgebraSemigroupal[Id, F]
 
   /**
     *
     * @group algtrans
     */
-  implicit def ElgotAlgebraMCartesian[W[_]: Functor, M[_]: Applicative, F[_]: Functor]:
-      Cartesian[ElgotAlgebraM[W, M, F, ?]] =
-    new Cartesian[ElgotAlgebraM[W, M, F, ?]] {
+  implicit def ElgotAlgebraMSemigroupal[W[_]: Functor, M[_]: Applicative, F[_]: Functor]:
+      Semigroupal[ElgotAlgebraM[W, M, F, ?]] =
+    new Semigroupal[ElgotAlgebraM[W, M, F, ?]] {
       def product[A, B](a: ElgotAlgebraM[W, M, F, A], b: ElgotAlgebraM[W, M, F, B]) =
         w => Bitraverse[(?, ?)].bisequence((a(w.map(_.map(_._1))), b(w.map(_.map(_._2)))))
     }
@@ -712,8 +712,8 @@ package object turtles {
     *
     * @group algtrans
     */
-  implicit def ElgotAlgebraCartesian[W[_]: Functor, F[_]: Functor] =
-    ElgotAlgebraMCartesian[W, Id, F]
+  implicit def ElgotAlgebraSemigroupal[W[_]: Functor, F[_]: Functor] =
+    ElgotAlgebraMSemigroupal[W, Id, F]
     // (ann, node) => node.unfzip.bimap(f(ann, _), g(ann, _))
 
   final def repeatedlyƒ[A](f: A => Option[A]): Coalgebra[Either[A, ?], A] =
@@ -776,11 +776,11 @@ package object turtles {
     * @group algebras
     */
   def height[F[_]: Foldable]: Algebra[F, Int] =
-    _.foldRight(Eval.now(-1))((a, b) => b.map(a max _).map(_ + 1)).value
+    _.foldRight(Eval.now(-1))((a, b) => b.map(a max _)).map(_ + 1).value
 
   /** Collects the set of all subtrees.
     *
-    * @group algebras 
+    * @group algebras
     */
   def universe[F[_]: Foldable, A]: ElgotAlgebra[(A, ?), F, NonEmptyList[A]] =
     p => NonEmptyList(p._1, p._2.toList.unite)
@@ -789,9 +789,9 @@ package object turtles {
     *
     * @group algebras
     */
-  def zipTuple[T, F[_]: Functor: Cartesian](implicit T: Recursive.Aux[T, F])
+  def zipTuple[T, F[_]: Functor: Semigroupal](implicit T: Recursive.Aux[T, F])
       : Coalgebra[F, (T, T)] =
-    p => Cartesian[F].product[T, T](p._1.project, p._2.project)
+    p => Semigroupal[F].product[T, T](p._1.project, p._2.project)
 
   /** Aligns “These” into a single structure, short-circuting when we hit a
     * “This” or “That”.

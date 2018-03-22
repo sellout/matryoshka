@@ -106,7 +106,7 @@ trait ArbitraryInstances extends ArbitraryInstancesʹ {
       def apply[A](arb: Arbitrary[A]) =
         Arbitrary(Gen.frequency(
           ( 1, None.pure[Gen]),
-          (75, arb.arbitrary.map(_.some))))
+          (50, arb.arbitrary.map(_.some))))
     }
 
   implicit def eitherArbitrary[A: Arbitrary]: Delay[Arbitrary, Either[A, ?]] =

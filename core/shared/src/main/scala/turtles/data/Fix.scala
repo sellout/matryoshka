@@ -39,5 +39,5 @@ abstract class FixInstances extends FixInstancesʹ {
 }
 
 abstract class FixInstancesʹ {
-  implicit val equalT: EqT[Fix] = EqT.recursiveT
+  implicit lazy val equalT: EqT[Fix] = EqT.recursiveT
 }

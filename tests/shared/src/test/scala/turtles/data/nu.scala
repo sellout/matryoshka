@@ -16,24 +16,14 @@
 
 package turtles.data
 
-import slamdata.Predef.{Eq => _, _}
+import cats.free.Free
+import cats.kernel.laws.discipline.EqTests
+import slamdata.Predef.Int
 import turtles.exp.Exp
-import turtles.helpers._
+import turtles.helpers.TurtlesSuite
 import turtles.patterns.CoEnv
-import turtles.scalacheck.arbitrary._
-import turtles.scalacheck.cogen._
 
-import cats._
-import cats.free._
-import cats.implicits._
-import cats.laws.discipline._
-import org.specs2.mutable._
-
-class NuSpec extends Specification with AlgebraChecks {
-  "Nu" >> {
-    // checkAll("Nu[Exp]", EqTests[Nu[Exp]].eq)
-    checkAll("Eq[Nu[Exp]]", SerializableTests.serializable(Eq[Nu[Exp]]))
-
-    checkFoldIsoLaws[Nu[CoEnv[Int, Exp, ?]], CoEnv[Int, Exp, ?], Free[Exp, Int]]("Nu", CoEnv.freeIso)
-  }
+class NuSpec extends TurtlesSuite {
+  checkAll("Nu[Exp]", EqTests[Nu[Exp]].eqv)
+  checkFoldIsoLaws[Nu[CoEnv[Int, Exp, ?]], CoEnv[Int, Exp, ?], Free[Exp, Int]]("Nu", CoEnv.freeIso)
 }
