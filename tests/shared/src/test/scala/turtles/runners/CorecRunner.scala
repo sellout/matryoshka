@@ -18,10 +18,10 @@ package turtles.runners
 
 import turtles._
 
-import org.specs2.matcher._
 import cats._
+import org.scalatest._
 
 abstract class CorecRunner[M[_], F[_], A] {
   def run[T: Eq: Show](implicit T: Birecursive.Aux[T, F])
-      : A => MatchResult[M[T]]
+      : A => Assertion
 }

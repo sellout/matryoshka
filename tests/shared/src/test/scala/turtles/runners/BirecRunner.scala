@@ -18,10 +18,10 @@ package turtles.runners
 
 import turtles._
 
-import org.specs2.matcher._
+import org.scalatest._
 
-abstract class BirecRunner[F[_], A] {
+abstract class BirecRunner[F[_]] {
   // NB: This is defined as a function to make the many definition sites
   //     slightly shorter.
-  def run[T](implicit T: Birecursive.Aux[T, F]): T => MatchResult[A]
+  def run[T](implicit T: Birecursive.Aux[T, F]): T => Assertion
 }

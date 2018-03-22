@@ -19,36 +19,31 @@ package turtles
 import turtles.data._
 import turtles.implicits._
 
-import org.specs2.execute._
-import org.specs2.matcher._
-import org.specs2.mutable.SpecificationLike
 import cats._
+import org.scalatest._
 
 package object runners {
 
-  // TODO: this, better
-  private val m = new SpecificationLike {}
-  import m._
-
-  def testRec[F[_], A](t: Fix[F], r: RecRunner[F, A])(implicit F: Functor[F])
-      : MatchResult[A] = {
-    r.run[Fix[F]].apply(t) and
-    r.run[Mu[F]].apply(t.convertTo[Mu[F]]) and
+  def testRec[F[_]](t: Fix[F], r: RecRunner[F])(implicit F: Functor[F])
+      : Assertion = {
+    r.run[Fix[F]].apply(t)
+    r.run[Mu[F]].apply(t.convertTo[Mu[F]])
     r.run[Nu[F]].apply(t.convertTo[Nu[F]])
   }
 
-  def testBirec[F[_], A](t: Fix[F], r: BirecRunner[F, A])(implicit F: Functor[F])
-      : MatchResult[A] = {
-    r.run[Fix[F]].apply(t) and
-    r.run[Mu[F]].apply(t.convertTo[Mu[F]]) and
+  def testBirec[F[_]](t: Fix[F], r: BirecRunner[F])(implicit F: Functor[F])
+      : Assertion = {
+    r.run[Fix[F]].apply(t)
+    r.run[Mu[F]].apply(t.convertTo[Mu[F]])
     r.run[Nu[F]].apply(t.convertTo[Nu[F]])
   }
 
   def testCorec[M[_], F[_]: Functor, A]
     (a: A, r: CorecRunner[M, F, A])
     (implicit Eq0: Delay[Eq, F], S0: Delay[Show, F])
-      : Result =
-    r.run[Fix[F]].apply(a).toResult // and
-    // r.run[Mu[F]].apply(a).toResult and
-    // r.run[Nu[F]].apply(a).toResult
+      : Assertion = {
+    r.run[Fix[F]].apply(a)
+    r.run[Mu[F]].apply(a)
+    r.run[Nu[F]].apply(a)
+  }
 }
