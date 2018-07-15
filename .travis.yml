@@ -12,11 +12,10 @@ matrix:
 
 sudo: false
 script:
-  - sbt checkHeaders
   - sbt coverage doc test tut
   - sbt coverageReport
   - sbt clean transferPublishAndTagResources
-  - scripts/publishAndTag 'slamdata/matryoshka'
+  - scripts/publishAndTag 'sellout/turtles'
 branches:
   except:
   - "/^v\\d+\\.\\d+\\.\\d+$/"
