@@ -184,3 +184,9 @@ Please note that this project is released with a [Contributor Code of Conduct](C
 ## Users
 
 - [Quasar](https://github.com/quasar-analytics/quasar)
+
+# Copyright
+
+Changes up to and including [commit 2233e287fab4ab8cd509663f2f384822af2ff32c](https://github.com/sellout/turtles/commit/2233e287fab4ab8cd509663f2f384822af2ff32c) are copyright Slamdata, Inc. Changes after that commit are copyright Greg Pfeil.
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file for details.
