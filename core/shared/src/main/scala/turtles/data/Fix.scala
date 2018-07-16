@@ -21,10 +21,12 @@ abstract class FixInstances extends FixInstancesʹ {
     def projectT[F[_]: Functor](t: Fix[F]) = t.unFix
   }
 
-  implicit def birecursiveT: BirecursiveT[Fix] = new BirecursiveT[Fix] {
+  implicit def recursiveT: RecursiveT[Fix] = new RecursiveT[Fix] {
     def cataT[F[_]: Functor, A](t: Fix[F])(f: Algebra[F, A]) =
       hylo(t)(f, steppableT.projectT[F])
+  }
 
+  implicit def corecursiveT: CorecursiveT[Fix] = new CorecursiveT[Fix] {
     def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]) =
       hylo(a)(steppableT.embedT[F], f)
   }

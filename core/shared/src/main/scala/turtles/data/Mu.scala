@@ -19,19 +19,19 @@ object Mu extends MuInstances
 
 abstract class MuInstances extends MuInstancesʹ {
   implicit def steppableT: SteppableT[Mu] = new SteppableT[Mu] {
-    // FIXME: ugh, shouldn’t have to redefine `lambek` in here?
-    def projectT[F[_]: Functor](t: Mu[F]) =
-      birecursiveT.cataT[F, F[Mu[F]]](t)(_.map(embedT[F]))
+    def projectT[F[_]: Functor](t: Mu[F]) = lambek[Mu[F], F](t)(embedT)
     def embedT[F[_]: Functor](t: F[Mu[F]]) =
       Mu(new (Algebra[F, ?] ~> Id) {
         def apply[A](fa: Algebra[F, A]): A =
-          fa(t.map(birecursiveT.cataT(_)(fa)))
+          fa(t.map(recursiveT.cataT(_)(fa)))
       })
   }
 
-  implicit def birecursiveT: BirecursiveT[Mu] = new BirecursiveT[Mu] {
+  implicit def recursiveT: RecursiveT[Mu] = new RecursiveT[Mu] {
     def cataT[F[_]: Functor, A](t: Mu[F])(f: Algebra[F, A]) = t.unMu(f)
+  }
 
+  implicit def corecursiveT: CorecursiveT[Mu] = new CorecursiveT[Mu] {
     def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]) =
       hylo(a)(steppableT.embedT[F], f)
   }

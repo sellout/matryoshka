@@ -103,6 +103,23 @@ trait Corecursive[T] extends Based[T] { self =>
       M[T] =
     ganaM[Free[Base, ?], M, A](a)(distFutu, f)
 
+  def postpro[A](
+    a: A)(
+    e: Base ~> Base, g: Coalgebra[Base, A])(
+    implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
+      T =
+    gpostpro[Id, A](a)(distAna, e, g)
+
+  def gpostpro[N[_], A](
+    a: A)(
+    k: DistributiveLaw[N, Base], e: Base ~> Base, ψ: GCoalgebra[N, Base, A])(
+    implicit T: Steppable.Aux[T, Base], BF: Functor[Base], N: Monad[N]):
+      T =
+    hylo[Yoneda[Base, ?], N[A], T](
+      a.pure[N])(
+      fa => T.embed((fa.map(ana(_)(x => e(T.project(x))))).run),
+        ma => Yoneda(k(ma.map(ψ))).map(_.flatten))
+
   def transAna[U, G[_]: Functor]
     (u: U)
     (f: G[U] => Base[U])
@@ -143,6 +160,49 @@ trait Corecursive[T] extends Based[T] { self =>
       BT: Traverse[Base])
       : M[T] =
     anaM(u)(f <<< (U.project(_)))
+
+  def transAnaT
+    (t: T)
+    (f: T => T)
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : T =
+    ana(t)(f >>> T.project)
+
+  /** This behaves like [[turtles.Corecursive.elgotApo]]`, but it’s harder to
+    * see from the types that in the disjunction, `Left` is the final result for
+    * this node, while `Right` means to keep processing the children.
+    */
+  def transApoT
+    (t: T)
+    (f: T => Either[T, T])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : T =
+    elgotApo(t)(f(_).map(T.project))
+
+  def transAnaTM[M[_]: Monad]
+    (t: T)
+    (f: T => M[T])
+    (implicit T: Steppable.Aux[T, Base], BF: Traverse[Base])
+      : M[T] =
+    anaM(t)(f(_).map(T.project))
+
+  // TODO: This should be an enrichment on Tuple2.
+  private def sequenceTuple[F[_]: Functor, A, B](tup: (A, F[B])): F[(A, B)] =
+    tup._2.map((tup._1, _))
+
+  def topDownCata[A]
+    (t: T, a: A)
+    (f: (A, T) => (A, T))
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : T =
+    ana((a, t))(at => sequenceTuple(f.tupled(at).map(T.project)))
+
+  def topDownCataM[M[_]: Monad, A](
+    t: T, a: A)(
+    f: (A, T) => M[(A, T)])(
+    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
+      M[T] =
+    anaM((a, t))(f.tupled(_).map(aft => sequenceTuple(aft.map(T.project))))
 }
 
 object Corecursive {

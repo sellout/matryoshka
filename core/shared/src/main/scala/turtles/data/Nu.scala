@@ -30,16 +30,16 @@ object Nu extends NuInstances {
 
 abstract class NuInstances extends NuInstancesʹ {
   implicit def steppableT: SteppableT[Nu] = new SteppableT[Nu] {
-    // FIXME: ugh, shouldn’t have to redefine `colambek` in here?
-    def embedT[F[_]: Functor](t: F[Nu[F]]) =
-      birecursiveT.anaT(t)(_.map(projectT[F]))
+    def embedT[F[_]: Functor](t: F[Nu[F]]) = colambek(t)(projectT)
     def projectT[F[_]: Functor](t: Nu[F]) = t.unNu(t.a).map(Nu(t.unNu, _))
   }
 
-  implicit def birecursiveT: BirecursiveT[Nu] = new BirecursiveT[Nu] {
+  implicit def recursiveT: RecursiveT[Nu] = new RecursiveT[Nu] {
     def cataT[F[_]: Functor, A](t: Nu[F])(f: Algebra[F, A]) =
       hylo(t)(f, steppableT.projectT[F])
+  }
 
+  implicit def corecursiveT: CorecursiveT[Nu] = new CorecursiveT[Nu] {
     def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]) = Nu(f, a)
   }
 

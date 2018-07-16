@@ -19,9 +19,13 @@ trait FreeInstances {
       _.run.fold(_.pure[Free[F, ?]], Free.liftF(_).flatten),
       t => CoEnv(t.resume.swap))
 
-  implicit def freeBirecursive[F[_]: Functor, A]
-      : Birecursive.Aux[Free[F, A], CoEnv[A, F, ?]] =
-    Birecursive.withNativeRecursion
+  implicit def freeRecursive[F[_]: Functor, A]
+      : Recursive.Aux[Free[F, A], CoEnv[A, F, ?]] =
+    Recursive.withNativeRecursion
+
+  implicit def freeCorecursive[F[_]: Functor, A]
+      : Corecursive.Aux[Free[F, A], CoEnv[A, F, ?]] =
+    Corecursive.withNativeRecursion
 
   implicit def freeEq[F[_]: Traverse](implicit F: Delay[Eq, F]):
       Delay[Eq, Free[F, ?]] =

@@ -24,9 +24,13 @@ trait NonEmptyListInstances {
       case NonEmptyList(a, Nil)     => Only(a)
     })
 
-  implicit def nelBirecursive[A]
-      : Birecursive.Aux[NonEmptyList[A], AndMaybe[A, ?]] =
-    Birecursive.withNativeRecursion
+  implicit def nelRecursive[A]
+      : Recursive.Aux[NonEmptyList[A], AndMaybe[A, ?]] =
+    Recursive.withNativeRecursion
+
+  implicit def nelCorecursive[A]
+      : Corecursive.Aux[NonEmptyList[A], AndMaybe[A, ?]] =
+    Corecursive.withNativeRecursion
 }
 
 object nel extends NonEmptyListInstances

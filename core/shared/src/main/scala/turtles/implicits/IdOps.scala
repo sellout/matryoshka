@@ -185,9 +185,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
         (e: F ~> F, g: Coalgebra[F, A])
-        (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : T =
-        TB.postpro(self)(e, g)
+        TC.postpro(self)(e, g)
     }
   }
 
@@ -197,9 +197,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[N[_]: Monad, F[_]: Functor]
         (k: DistributiveLaw[N, F], e: F ~> F, g: GCoalgebra[N, F, A])
-        (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : T =
-        TB.gpostpro(self)(k, e, g)
+        TC.gpostpro(self)(k, e, g)
     }
   }
 

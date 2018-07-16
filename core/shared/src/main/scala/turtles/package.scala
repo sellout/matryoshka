@@ -184,26 +184,56 @@ package object turtles {
       Prism(ψ)(φ)
   }
 
+  /** Roughly a default impl of `project`, given a [[Recursive]] instance and a
+    * definition of `embed`.
+    */
+  def lambek[T, F[_]]
+    (tf: T)
+    (φ: Algebra[F, T])
+    (implicit T: Recursive.Aux[T, F], F: Functor[F])
+      : F[T] =
+    T.cata(tf)(F.lift(φ))
+
+  /** Roughly a default impl of `embed`, given a [[Corecursive]] instance and a
+    * definition of `project`.
+    */
+  def colambek[T, F[_]]
+    (ft: F[T])
+    (ψ: Coalgebra[F, T])
+    (implicit T: Corecursive.Aux[T, F], F: Functor[F])
+      : T =
+    T.ana(ft)(F.lift(ψ))
+
+  def lambekIso[T, F[_]: Functor]
+    (implicit
+      TS: Steppable.Aux[T, F],
+      TR: Recursive.Aux[T, F],
+      TC: Corecursive.Aux[T, F]) =
+    AlgebraIso[F, T](colambek(_)(TS.project))(lambek[T, F](_)(TS.embed))
+
   /** There is a fold/unfold isomorphism for any AlgebraIso.
     */
   def foldIso[T, F[_]: Functor, A]
     (alg: AlgebraIso[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
-    Iso[T, A](_.cata(alg.get))(_.ana[T](alg.reverseGet))
+    (implicit TR: Recursive.Aux[T, F], TC: Corecursive.Aux[T, F]) =
+    Iso[T, A](TR.cata(_)(alg.get))(TC.ana(_)(alg.reverseGet))
 
   /** There is a fold prism for any AlgebraPrism.
     */
   def foldPrism[T, F[_]: Traverse, A]
     (alg: AlgebraPrism[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
-    Prism[T, A](T.cataM(_)(alg.getOption))(_.ana[T](alg.reverseGet))
+    (implicit TR: Recursive.Aux[T, F], TC: Corecursive.Aux[T, F]) =
+    Prism[T, A](TR.cataM(_)(alg.getOption))(TC.ana(_)(alg.reverseGet))
 
   /** There is an unfold prism for any CoalgebraPrism.
     */
   def unfoldPrism[T, F[_]: Traverse, A]
     (coalg: CoalgebraPrism[F, A])
-    (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F]) =
-    Prism[A, T](_.anaM[T](coalg.getOption))(_.cata(coalg.reverseGet))
+    (implicit
+      TS: Steppable.Aux[T, F],
+      TR: Recursive.Aux[T, F],
+      TC: Corecursive.Aux[T, F]) =
+    Prism[A, T](TC.anaM(_)(coalg.getOption))(TR.cata(_)(coalg.reverseGet))
 
   /** A NaturalTransformation that sequences two types
     *
@@ -889,16 +919,6 @@ package object turtles {
       type Base[A] = F[A]
 
       def ana[A](a: A)(f: Coalgebra[F, A]) = CorecursiveT[T].anaT[F, A](a)(f)
-    }
-
-  implicit def birecursiveTBirecursive[T[_[_]]: BirecursiveT, F[_]: Functor]
-      : Birecursive.Aux[T[F], F] =
-    new Birecursive[T[F]] {
-      type Base[A] = F[A]
-
-      def cata[A](t: T[F])(f: Algebra[F, A]) = BirecursiveT[T].cataT[F, A](t)(f)
-
-      def ana[A](a: A)(f: Coalgebra[F, A]) = BirecursiveT[T].anaT[F, A](a)(f)
     }
 
   implicit def orderTOrder[T[_[_]], F[_]: Functor](implicit T: OrderT[T], F: Delay[Order, F]): Order[T[F]] =

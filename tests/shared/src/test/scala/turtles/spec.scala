@@ -45,9 +45,8 @@ import scala.util.{ Right => \/- }
 
 class TurtlesSpecs extends TurtlesSuite {
 
-
-  checkAlgebraIsoLaws("birec", Steppable.iso[Mu[Exp], Exp])
-  checkAlgebraIsoLaws("lambek", Birecursive.lambekIso[Mu[Exp], Exp])
+  checkAlgebraIsoLaws("steppable", Steppable.iso[Mu[Exp], Exp])
+  checkAlgebraIsoLaws("lambek", lambekIso[Mu[Exp], Exp])
 
   // "Attr" >> {
   //   type T[A] = Cofree[Exp, A]

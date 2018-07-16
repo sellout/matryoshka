@@ -20,13 +20,6 @@ package object runners {
     r.run[Nu[F]].apply(t.convertTo[Nu[F]])
   }
 
-  def testBirec[F[_]](t: Fix[F], r: BirecRunner[F])(implicit F: Functor[F])
-      : Assertion = {
-    r.run[Fix[F]].apply(t)
-    r.run[Mu[F]].apply(t.convertTo[Mu[F]])
-    r.run[Nu[F]].apply(t.convertTo[Nu[F]])
-  }
-
   def testCorec[M[_], F[_]: Functor, A]
     (a: A, r: CorecRunner[M, F, A])
     (implicit Eq0: Delay[Eq, F], S0: Delay[Show, F])

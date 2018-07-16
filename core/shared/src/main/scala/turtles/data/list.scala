@@ -20,8 +20,11 @@ trait ListInstances {
       case Nil    => NilF[A, List[A]]()
     })
 
-  implicit def listBirecursive[A]: Birecursive.Aux[List[A], ListF[A, ?]] =
-    Birecursive.withNativeRecursion[List[A], ListF[A, ?]]
+  implicit def listRecursive[A]: Recursive.Aux[List[A], ListF[A, ?]] =
+    Recursive.withNativeRecursion[List[A], ListF[A, ?]]
+
+  implicit def listCorecursive[A]: Corecursive.Aux[List[A], ListF[A, ?]] =
+    Corecursive.withNativeRecursion[List[A], ListF[A, ?]]
 }
 
 object list extends ListInstances

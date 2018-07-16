@@ -16,9 +16,13 @@ trait OptionInstances {
       : Steppable.Aux[Option[A], Const[Option[A], ?]] =
     id.idSteppable[Option[A]]
 
-  implicit def optionBirecursive[A]
-      : Birecursive.Aux[Option[A], Const[Option[A], ?]] =
-    id.idBirecursive[Option[A]]
+  implicit def optionRecursive[A]
+      : Recursive.Aux[Option[A], Const[Option[A], ?]] =
+    id.idRecursive[Option[A]]
+
+  implicit def optionCorecursive[A]
+      : Corecursive.Aux[Option[A], Const[Option[A], ?]] =
+    id.idCorecursive[Option[A]]
 
   implicit val optionDelayEq: Delay[Eq, Option] =
     new Delay[Eq, Option] {

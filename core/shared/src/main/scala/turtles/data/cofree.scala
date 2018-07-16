@@ -19,9 +19,13 @@ trait CofreeInstances {
       t => Cofree(t.ask, Later(t.lower)),
       t => EnvT((t.head, t.tail.value)))
 
-  implicit def cofreeBirecursive[F[_], A](implicit F: Functor[F])
-      : Birecursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
-    Birecursive.withNativeRecursion
+  implicit def cofreeRecursive[F[_], A](implicit F: Functor[F])
+      : Recursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
+    Recursive.withNativeRecursion
+
+  implicit def cofreeCorecursive[F[_], A](implicit F: Functor[F])
+      : Corecursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
+    Corecursive.withNativeRecursion
 
   implicit def cofreeEq[F[_]: Traverse](implicit F: Delay[Eq, F]):
       Delay[Eq, Cofree[F, ?]] =

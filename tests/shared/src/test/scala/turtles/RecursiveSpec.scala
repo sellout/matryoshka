@@ -179,7 +179,7 @@ class RecursiveSpec extends TurtlesSuite {
       num(1),
       new CorecRunner[Id, Exp, Fix[Exp]] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.transAna[T](addOneƒ) should === (num(2).convertTo[T])
       })
   }
@@ -189,7 +189,7 @@ class RecursiveSpec extends TurtlesSuite {
       mul(num(1), num(2)),
       new CorecRunner[Id, Exp, Fix[Exp]] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.transAna[T](addOneƒ) should === (mul(num(2), num(3)).convertTo[T])
       })
   }
@@ -225,33 +225,33 @@ class RecursiveSpec extends TurtlesSuite {
   }
 
   test("transPrepro should change literal with identity ~>") {
-    testBirec(
+    testRec(
       num(1),
-      new BirecRunner[Exp] {
+      new RecRunner[Exp] {
         def run[T]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TR: Recursive.Aux[T, Exp]) =
           _.transPrepro[Fix[Exp]](FunctionK.id, addOneƒ) should
         === (num(2))
       })
   }
 
   test("transPrepro should apply ~> in original space") {
-    testBirec(
+    testRec(
       mul(num(1), mul(num(12), num(8))),
-      new BirecRunner[Exp] {
+      new RecRunner[Exp] {
         def run[T]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TR: Recursive.Aux[T, Exp]) =
           _.transPrepro[Fix[Exp]](MinusThree, addOneƒ) should
         === (mul(num(-1), mul(num(7), num(3))))
       })
   }
 
   test("transPrepro should apply ~> with change of space") {
-    testBirec(
+    testRec(
       num(1),
-      new BirecRunner[Exp] {
+      new RecRunner[Exp] {
         def run[T]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TR: Recursive.Aux[T, Exp]) =
           _.transPrepro[Fix[Exp2]](MinusThree, addOneExpExp2ƒ) should === (num2(2))
       })
   }
@@ -261,7 +261,7 @@ class RecursiveSpec extends TurtlesSuite {
       num(1),
       new CorecRunner[Id, Exp, Fix[Exp]] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.transPostpro[T](FunctionK.id, addOneƒ) should
         === (num(2).convertTo[T])
       })
@@ -272,7 +272,7 @@ class RecursiveSpec extends TurtlesSuite {
       mul(num(1), mul(num(12), num(8))),
       new CorecRunner[Id, Exp, Fix[Exp]] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.transPostpro[T](MinusThree, addOneƒ) should
         === (mul(num(-1), mul(num(7), num(3))).convertTo[T])
       })
@@ -283,7 +283,7 @@ class RecursiveSpec extends TurtlesSuite {
       num2(1),
       new CorecRunner[Id, Exp, Fix[Exp2]] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.transPostpro[T](MinusThree, addOneExp2Expƒ) should
         === (num(2).convertTo[T])
       })
@@ -647,7 +647,7 @@ class RecursiveSpec extends TurtlesSuite {
       12,
       new CorecRunner[Option, Exp, Int] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.anaM[T](extractFactorsM) should
         === (mul(num(2), mul(num(2), num(3))).convertTo[T].some)
       })
@@ -657,7 +657,7 @@ class RecursiveSpec extends TurtlesSuite {
       10,
       new CorecRunner[Option, Exp, Int] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.anaM[T](extractFactorsM) should === (None)
       })
   }
@@ -667,7 +667,7 @@ class RecursiveSpec extends TurtlesSuite {
         i,
         new CorecRunner[Id, Exp, Int] {
           def run[T: Eq: Show]
-            (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+            (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
             _.anaM[T][Id, Exp](extractFactors) should
           === (i.ana[T](extractFactors))
         })
@@ -680,7 +680,7 @@ class RecursiveSpec extends TurtlesSuite {
         i,
         new CorecRunner[Id, Exp, Int] {
           def run[T: Eq: Show]
-            (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+            (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
             _.gana[T][Id, Exp](distAna, extractFactors) should
               === (i.ana[T](extractFactors))
         })
@@ -693,7 +693,7 @@ class RecursiveSpec extends TurtlesSuite {
         i,
         new CorecRunner[Id, Exp, Int] {
           def run[T: Eq: Show]
-            (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+            (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
             _.elgotAna[T][Id, Exp](distAna, extractFactors) should
               === (i.ana[T](extractFactors))
         })
@@ -826,7 +826,7 @@ class RecursiveSpec extends TurtlesSuite {
       8,
       new CorecRunner[Id, Exp, Int] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.futu[T](extract2and3) should === (mul(num(2), mul(num(2), num(2))).convertTo[T])
       })
   }
@@ -836,7 +836,7 @@ class RecursiveSpec extends TurtlesSuite {
       81,
       new CorecRunner[Id, Exp, Int] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.futu[T](extract2and3) should
             === (mul(num(3), num(27)).convertTo[T])
       })
@@ -847,7 +847,7 @@ class RecursiveSpec extends TurtlesSuite {
       324,
       new CorecRunner[Id, Exp, Int] {
         def run[T: Eq: Show]
-          (implicit TS: Steppable.Aux[T, Exp], TB: Birecursive.Aux[T, Exp]) =
+          (implicit TS: Steppable.Aux[T, Exp], TC: Corecursive.Aux[T, Exp]) =
           _.futu[T](extract2and3) should
             === (mul(num(2), mul(num(2), mul(num(3), num(27)))).convertTo[T])
       })

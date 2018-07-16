@@ -12,18 +12,9 @@ import cats.evidence._
 import cats.free._
 
 package object implicits
-    extends Birecursive.ToBirecursiveOps
-    with Merge.ToMergeOps
+    extends Merge.ToMergeOps
     with Recursive.ToRecursiveOps
     with Steppable.ToSteppableOps {
-
-  implicit def toRecursive[T, F[_]](implicit T: Birecursive.Aux[T, F])
-      : Recursive.Aux[T, F] =
-    T.rec
-
-  implicit def toCorecursive[T, F[_]](implicit T: Birecursive.Aux[T, F])
-      : Corecursive.Aux[T, F] =
-    T.corec
 
   implicit def toIdOps[A](a: A): IdOps[A] = new IdOps[A](a)
 
@@ -90,14 +81,36 @@ package object implicits
         BF: Functor[F])
         : M[U] =
       UC.transAnaM(self)(f)
-  }
 
-  implicit final class BirecursiveOps[T, F[_], FF[_]](
-    self: F[T])(
-    implicit T: Birecursive.Aux[T, FF], Sub: F[T] <~< FF[T]) {
+    def transAnaT(f: T => T)(implicit TC: Corecursive.Aux[T, F], BF: Functor[F])
+        : T =
+      TC.transAnaT(self)(f)
 
-    def colambek(implicit TS: Steppable.Aux[T, FF], F: Functor[FF]): T =
-      T.colambek(Sub(self))
+    def transApoT
+      (f: T => Either[T, T])
+      (implicit TC: Corecursive.Aux[T, F], BF: Functor[F])
+        : T =
+      TC.transApoT(self)(f)
+
+    def transAnaTM[M[_]: Monad]
+      (f: T => M[T])
+      (implicit TC: Corecursive.Aux[T, F], BF: Traverse[F])
+        : M[T] =
+      TC.transAnaTM(self)(f)
+
+    def topDownCata[A]
+      (a: A)
+      (f: (A, T) => (A, T))
+      (implicit TC: Corecursive.Aux[T, F], BF: Functor[F])
+        : T =
+      TC.topDownCata[A](self, a)(f)
+
+    def topDownCataM[M[_]: Monad, A]
+      (a: A)
+      (f: (A, T) => M[(A, T)])
+      (implicit TC: Corecursive.Aux[T, F], BT: Traverse[F])
+        : M[T] =
+      TC.topDownCataM[M, A](self, a)(f)
   }
 
   implicit def toAlgebraOps[F[_], A](a: Algebra[F, A]): AlgebraOps[F, A] =

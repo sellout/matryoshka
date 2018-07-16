@@ -22,19 +22,22 @@ trait TurtlesSuite
   def checkFoldIsoLaws
     [T: Arbitrary: Eq, F[_]: Functor, A: Arbitrary: Eq: Cogen]
     (name: String, iso: AlgebraIso[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
+    (implicit TR: Recursive.Aux[T, F], TC: Corecursive.Aux[T, F]) =
     checkAll(name + " Iso", IsoTests(foldIso[T, F, A](iso)))
 
   def checkFoldPrismLaws
     [T: Arbitrary: Eq, F[_]: Traverse, A: Arbitrary: Eq: Cogen]
     (name: String, prism: AlgebraPrism[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
+    (implicit TR: Recursive.Aux[T, F], TC: Corecursive.Aux[T, F]) =
     checkAll(name + " Prism", PrismTests(foldPrism(prism)))
 
   def checkUnfoldPrismLaws
     [T: Arbitrary: Eq: Cogen, F[_]: Traverse, A: Arbitrary: Eq]
     (name: String, prism: CoalgebraPrism[F, A])
-    (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F]) =
+    (implicit
+      TS: Steppable.Aux[T, F],
+      TR: Recursive.Aux[T, F],
+      TC: Corecursive.Aux[T, F]) =
     checkAll(name + " Prism", PrismTests(unfoldPrism(prism)))
 
   def checkAlgebraIsoLaws[F[_], A: Arbitrary: Eq: Cogen]

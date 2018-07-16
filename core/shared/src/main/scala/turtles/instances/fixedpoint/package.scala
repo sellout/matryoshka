@@ -39,7 +39,10 @@ package object fixedpoint {
     // NB: This isn’t defined via `AlgebraPrism` because it only holds across a
     //     recursive structure.
     def intPrism[T]
-      (implicit TS: Steppable.Aux[T, Option], TB: Birecursive.Aux[T, Option]) =
+      (implicit
+        TS: Steppable.Aux[T, Option],
+        TR: Recursive.Aux[T, Option],
+        TC: Corecursive.Aux[T, Option]) =
       Prism[Int, T](_.anaM[T](fromInt))(_.cata(height))
   }
 

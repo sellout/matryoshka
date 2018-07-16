@@ -16,12 +16,19 @@ trait IdInstances {
   def idSteppable[A]: Steppable.Aux[A, Const[A, ?]] =
     Steppable.fromAlgebraIso(_.getConst, Const(_))
 
-  /** This is a single (low-priority) instance to provide folds/unfolds for all
+  /** This is a single (low-priority) instance to provide folds for all
     * non-recursive data types.
     */
-  def idBirecursive[A](implicit A: Steppable.Aux[A, Const[A, ?]])
-      : Birecursive.Aux[A, Const[A, ?]] =
-    Birecursive.withNativeRecursion[A, Const[A, ?]]
+  def idRecursive[A](implicit A: Steppable.Aux[A, Const[A, ?]])
+      : Recursive.Aux[A, Const[A, ?]] =
+    Recursive.withNativeRecursion[A, Const[A, ?]]
+
+  /** This is a single (low-priority) instance to provide unfolds for all
+    * non-recursive data types.
+    */
+  def idCorecursive[A](implicit A: Steppable.Aux[A, Const[A, ?]])
+      : Corecursive.Aux[A, Const[A, ?]] =
+    Corecursive.withNativeRecursion[A, Const[A, ?]]
 }
 
 object id extends IdInstances
