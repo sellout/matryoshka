@@ -7,17 +7,21 @@ package turtles.data
 
 import slamdata.Predef.{Eq => _, _}
 import turtles._
+import turtles.derived._
 import turtles.patterns._
 
 trait ListInstances {
-  implicit def listBirecursive[A]: Birecursive.Aux[List[A], ListF[A, ?]] =
-    Birecursive.fromAlgebraIso[List[A], ListF[A, ?]]({
+  implicit def listSteppable[A]: Steppable.Aux[List[A], ListF[A, ?]] =
+    Steppable.fromAlgebraIso[List[A], ListF[A, ?]]({
       case ConsF(h, t) => h :: t
       case NilF()      => Nil
     }, {
       case h :: t => ConsF(h, t)
       case Nil    => NilF[A, List[A]]()
     })
+
+  implicit def listBirecursive[A]: Birecursive.Aux[List[A], ListF[A, ?]] =
+    Birecursive.withNativeRecursion[List[A], ListF[A, ?]]
 }
 
 object list extends ListInstances

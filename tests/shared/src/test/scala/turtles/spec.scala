@@ -46,7 +46,7 @@ import scala.util.{ Right => \/- }
 class TurtlesSpecs extends TurtlesSuite {
 
 
-  checkAlgebraIsoLaws("birec", Birecursive.iso[Mu[Exp], Exp])
+  checkAlgebraIsoLaws("birec", Steppable.iso[Mu[Exp], Exp])
   checkAlgebraIsoLaws("lambek", Birecursive.lambekIso[Mu[Exp], Exp])
 
   // "Attr" >> {
@@ -146,5 +146,5 @@ class TurtlesSpecs extends TurtlesSuite {
     exp.cata(recover(eval)) should === (720)
   }
 
-  def expGen = Gen.resize(100, corecursiveArbitrary[Mu[Exp], Exp].arbitrary)
+  def expGen = Gen.resize(100, steppableArbitrary[Mu[Exp], Exp].arbitrary)
 }

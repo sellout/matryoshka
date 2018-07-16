@@ -34,7 +34,7 @@ trait TurtlesSuite
   def checkUnfoldPrismLaws
     [T: Arbitrary: Eq: Cogen, F[_]: Traverse, A: Arbitrary: Eq]
     (name: String, prism: CoalgebraPrism[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
+    (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F]) =
     checkAll(name + " Prism", PrismTests(unfoldPrism(prism)))
 
   def checkAlgebraIsoLaws[F[_], A: Arbitrary: Eq: Cogen]

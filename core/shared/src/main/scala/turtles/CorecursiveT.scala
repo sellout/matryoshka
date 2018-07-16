@@ -13,10 +13,7 @@ import cats._
   */
 // NB: Not a `@typeclass` because we don’t want to inject these operations.
 trait CorecursiveT[T[_[_]]] {
-  def embedT[F[_]: Functor](t: F[T[F]]): T[F]
-
-  def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]): T[F] =
-    hylo(a)(embedT[F], f)
+  def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]): T[F]
 }
 
 object CorecursiveT {

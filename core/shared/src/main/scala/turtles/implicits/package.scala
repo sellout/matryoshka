@@ -14,7 +14,8 @@ import cats.free._
 package object implicits
     extends Birecursive.ToBirecursiveOps
     with Merge.ToMergeOps
-    with Recursive.ToRecursiveOps {
+    with Recursive.ToRecursiveOps
+    with Steppable.ToSteppableOps {
 
   implicit def toRecursive[T, F[_]](implicit T: Birecursive.Aux[T, F])
       : Recursive.Aux[T, F] =
@@ -26,17 +27,19 @@ package object implicits
 
   implicit def toIdOps[A](a: A): IdOps[A] = new IdOps[A](a)
 
-  implicit final class CorecursiveOps[T, F[_], FF[_]](
+  implicit final class SteppableBaseOps[T, F[_], FF[_]](
     self: F[T])(
-    implicit T: Corecursive.Aux[T, FF], Sub: F[T] <~< FF[T]) {
+    implicit T: Steppable.Aux[T, FF], Sub: F[T] <~< FF[T]) {
 
     def embed(implicit F: Functor[FF]): T = T.embed(Sub(self))
   }
 
-  implicit class RecursiveOps[T, F[_]](self: T)(implicit T: Recursive.Aux[T, F]) {
+  implicit final class SteppableOps[T, F[_]]
+    (self: T)(implicit T: Steppable.Aux[T, F]) {
+
     def transHylo[G[_]: Functor, U, H[_]: Functor]
       (φ: G[U] => H[U], ψ: F[T] => G[T])
-      (implicit U: Corecursive.Aux[U, H], BF: Functor[F])
+      (implicit U: Steppable.Aux[U, H], BF: Functor[F])
         : U =
       turtles.transHylo(self)(φ, ψ)
 
@@ -45,42 +48,56 @@ package object implicits
       final class PartiallyApplied[U] {
         def apply[G[_]: Functor]
           (f: F[T] => G[T])
-          (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
+          (implicit
+            US: Steppable.Aux[U, G],
+            UC: Corecursive.Aux[U, G],
+            BF: Functor[F])
             : U =
-          U.transAna(self)(f)
+          UC.transAna(self)(f)
       }
     }
 
     def transGana[M[_]: Monad, U, G[_]: Functor]
       (k: DistributiveLaw[M, G], f: CoalgebraicGTransform[M, T, F, G])
-      (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
+      (implicit
+        U: Corecursive.Aux[U, G],
+        BF: Functor[F])
         : U =
       U.transGana(self)(k, f)
 
     def transApo[U, G[_]: Functor]
       (f: CoalgebraicGTransform[Either[U, ?], T, F, G])
-      (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
+      (implicit
+        US: Steppable.Aux[U, G],
+        UC: Corecursive.Aux[U, G],
+        BF: Functor[F])
         : U =
-      U.transApo(self)(f)
+      UC.transApo(self)(f)
 
     def transFutu[U, G[_]: Functor]
       (f: CoalgebraicGTransform[Free[G, ?], T, F, G])
-      (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
+      (implicit
+        U: Corecursive.Aux[U, G],
+        BF: Functor[F])
         : U =
       U.transFutu(self)(f)
 
     def transAnaM[M[_]: Monad, U, G[_]: Traverse]
       (f: TransformM[M, T, F, G])
-      (implicit U: Corecursive.Aux[U, G], BF: Functor[F])
+      (implicit
+        US: Steppable.Aux[U, G],
+        UC: Corecursive.Aux[U, G],
+        BF: Functor[F])
         : M[U] =
-      U.transAnaM(self)(f)
+      UC.transAnaM(self)(f)
   }
 
   implicit final class BirecursiveOps[T, F[_], FF[_]](
     self: F[T])(
     implicit T: Birecursive.Aux[T, FF], Sub: F[T] <~< FF[T]) {
 
-    def colambek(implicit F: Functor[FF]): T = T.colambek(Sub(self))
+    def colambek(implicit TS: Steppable.Aux[T, FF], F: Functor[FF]): T =
+      T.colambek(Sub(self))
   }
 
   implicit def toAlgebraOps[F[_], A](a: Algebra[F, A]): AlgebraOps[F, A] =

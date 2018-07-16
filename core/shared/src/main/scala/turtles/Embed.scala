@@ -6,17 +6,13 @@
 package turtles
 
 import slamdata.Predef.{Eq => _, _}
-import turtles.implicits._
 
-import cats._
-
-/** An extractor to make it easier to pattern-match on arbitrary [[Recursive]]
+/** An extractor to make it easier to pattern-match on arbitrary [[Steppable]]
   * structures.
   *
   * NB: This extractor is irrufutable and doesn’t break exhaustiveness checking.
   */
 object Embed {
-  def unapply[T, F[_]](obj: T)(implicit T: Recursive.Aux[T, F], F: Functor[F])
-      : Some[F[T]] =
-    Some(obj.project)
+  def unapply[T, F[_]](obj: T)(implicit T: Steppable.Aux[T, F]): Some[F[T]] =
+    Some(T.project(obj))
 }

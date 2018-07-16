@@ -11,6 +11,7 @@ import cats._
 import org.scalatest._
 
 abstract class CorecRunner[M[_], F[_], A] {
-  def run[T: Eq: Show](implicit T: Birecursive.Aux[T, F])
+  def run[T: Eq: Show]
+    (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F])
       : A => Assertion
 }

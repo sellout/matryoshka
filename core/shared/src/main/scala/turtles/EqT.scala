@@ -20,7 +20,7 @@ import simulacrum._
 }
 
 object EqT {
-  def recursiveT[T[_[_]]: RecursiveT]: EqT[T] = new EqT[T] {
+  def steppableT[T[_[_]]: SteppableT]: EqT[T] = new EqT[T] {
     def eqv[F[_]: Functor]
       (tf1: T[F], tf2: T[F])
       (implicit del: Delay[Eq, F]) =

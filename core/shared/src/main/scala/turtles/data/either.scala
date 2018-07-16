@@ -11,6 +11,10 @@ import turtles._
 import cats.data._
 
 trait EitherInstances {
+  implicit def eitherSteppable[A, B]
+      : Steppable.Aux[Either[A, B], Const[Either[A, B], ?]] =
+    id.idSteppable[Either[A, B]]
+
   implicit def eitherBirecursive[A, B]
       : Birecursive.Aux[Either[A, B], Const[Either[A, B], ?]] =
     id.idBirecursive[Either[A, B]]

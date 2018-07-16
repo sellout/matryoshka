@@ -23,17 +23,17 @@ trait CogenInstancesʹ {
 trait CogenInstances extends CogenInstancesʹ {
   // TODO: Define this using a fold rather than `project`
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
-  def recursiveCogen[T, F[_]: Functor]
-    (implicit T: Recursive.Aux[T, F], F: Delay[Cogen, F])
+  def steppableCogen[T, F[_]: Functor]
+    (implicit T: Steppable.Aux[T, F], F: Delay[Cogen, F])
       : Cogen[T] =
-    Cogen((seed, value) => F(recursiveCogen[T, F]).perturb(seed, value.project))
+    Cogen((seed, value) => F(steppableCogen[T, F]).perturb(seed, value.project))
 
   implicit def fixCogen[F[_]: Functor](implicit F: Delay[Cogen, F]): Cogen[Fix[F]] =
-    recursiveCogen[Fix[F], F]
+    steppableCogen[Fix[F], F]
   implicit def muCogen[F[_]: Functor](implicit F: Delay[Cogen, F]): Cogen[Mu[F]] =
-    recursiveCogen[Mu[F], F]
+    steppableCogen[Mu[F], F]
   implicit def nuCogen[F[_]: Functor](implicit F: Delay[Cogen, F]): Cogen[Nu[F]] =
-    recursiveCogen[Nu[F], F]
+    steppableCogen[Nu[F], F]
 
   implicit val optionCogen: Delay[Cogen, Option] =
     new Delay[Cogen, Option] {
@@ -66,7 +66,7 @@ trait CogenInstances extends CogenInstancesʹ {
     new Delay[Cogen, Free[F, ?]] {
       def apply[A](a: Cogen[A]) = {
         implicit val aʹ: Cogen[A] = a
-        recursiveCogen[Free[F, A], CoEnv[A, F, ?]]
+        steppableCogen[Free[F, A], CoEnv[A, F, ?]]
       }
     }
 
@@ -74,7 +74,7 @@ trait CogenInstances extends CogenInstancesʹ {
     new Delay[Cogen, Cofree[F, ?]] {
       def apply[A](a: Cogen[A]) = {
         implicit val aʹ: Cogen[A] = a
-        recursiveCogen[Cofree[F, A], EnvT[A, F, ?]]
+        steppableCogen[Cofree[F, A], EnvT[A, F, ?]]
       }
     }
 }

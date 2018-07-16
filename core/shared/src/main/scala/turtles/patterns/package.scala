@@ -19,8 +19,8 @@ package object patterns {
   type DiffT[T[_[_]], F[_]] = T[Diff[T, F, ?]]
   type PotentialFailureT[T[_[_]], F[_], E] = T[PotentialFailure[T, F, E, ?]]
 
-  def diff[T[_[_]]: BirecursiveT, F[_]: Diffable: Functor: Foldable]:
-      (T[F], T[F], Option[F[DiffT[T, F]]]) => DiffT[T, F] =
+  def diff[T[_[_]]: SteppableT: RecursiveT, F[_]: Diffable: Functor: Foldable]
+      : (T[F], T[F], Option[F[DiffT[T, F]]]) => DiffT[T, F] =
     ((l, r, merged) =>
       merged.fold(
         Diffable[F].diffImpl(l, r).getOrElse(Different[T, F, T[Diff[T, F, ?]]](l, r).embed))(

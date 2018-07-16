@@ -16,8 +16,8 @@ import simulacrum._
 @typeclass trait Diffable[F[_]] { self =>
   private implicit def selfʹ: Diffable[F] = self
 
-  def diffImpl[T[_[_]]: BirecursiveT](l: T[F], r: T[F]):
-      Option[DiffT[T, F]]
+  def diffImpl[T[_[_]]: SteppableT: RecursiveT](l: T[F], r: T[F])
+      : Option[DiffT[T, F]]
 
   /** Useful when a case class has a `List[A]` that isn’t the final `A`. This is
     * because the normal comparison just walks over the children of the functor,
@@ -26,7 +26,7 @@ import simulacrum._
     * Currently also useful when the only list _is_ the final parameter, because
     * it allows you to explicitly use `Similar` rather than `LocallyDifferent`.
     */
-  def diffTraverse[T[_[_]]: BirecursiveT, G[_]: Traverse](
+  def diffTraverse[T[_[_]]: SteppableT: RecursiveT, G[_]: Traverse](
     left: G[T[F]], right: G[T[F]])(
     implicit FF: Functor[F], FoldF: Foldable[F], FM: Merge[F]):
       G[DiffT[T, F]] =
@@ -47,7 +47,7 @@ import simulacrum._
   //       only differ on the length of the list. So we can make them `Similar`
   //       rather than `LocallyDifferent`.
 
-  def localDiff[T[_[_]]: BirecursiveT](
+  def localDiff[T[_[_]]: SteppableT: RecursiveT](
     left: F[T[F]], right: F[T[F]])(
     implicit FT: Traverse[F], FM: Merge[F]):
       DiffT[T, F] =

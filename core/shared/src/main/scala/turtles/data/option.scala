@@ -12,6 +12,10 @@ import cats._
 import cats.data._
 
 trait OptionInstances {
+  implicit def optionSteppable[A]
+      : Steppable.Aux[Option[A], Const[Option[A], ?]] =
+    id.idSteppable[Option[A]]
+
   implicit def optionBirecursive[A]
       : Birecursive.Aux[Option[A], Const[Option[A], ?]] =
     id.idBirecursive[Option[A]]

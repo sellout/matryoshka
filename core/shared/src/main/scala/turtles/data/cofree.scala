@@ -13,11 +13,15 @@ import cats.free._
 import cats.implicits._
 
 trait CofreeInstances {
-  implicit def cofreeBirecursive[F[_], A]
-      : Birecursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
-    Birecursive.fromAlgebraIso(
+  implicit def cofreeSteppable[F[_], A](implicit F: Functor[F])
+      : Steppable.Aux[Cofree[F, A], EnvT[A, F, ?]] =
+    Steppable.fromAlgebraIso(
       t => Cofree(t.ask, Later(t.lower)),
       t => EnvT((t.head, t.tail.value)))
+
+  implicit def cofreeBirecursive[F[_], A](implicit F: Functor[F])
+      : Birecursive.Aux[Cofree[F, A], EnvT[A, F, ?]] =
+    Birecursive.withNativeRecursion
 
   implicit def cofreeEq[F[_]: Traverse](implicit F: Delay[Eq, F]):
       Delay[Eq, Cofree[F, ?]] =
@@ -25,7 +29,7 @@ trait CofreeInstances {
       def apply[A](eq: Eq[A]) = {
         implicit val envtʹ: Delay[Eq, EnvT[A, F, ?]] = EnvT.equal(eq, F)
 
-        Birecursive.biEq[Cofree[F, A], EnvT[A, F, ?]]
+        Corecursive.corecursiveEq[Cofree[F, A], EnvT[A, F, ?]]
       }
     }
 

@@ -19,38 +19,38 @@ trait ShrinkInstancesʹ {
 }
 
 trait ShrinkInstances extends ShrinkInstancesʹ {
-  /** An instance for [[turtles.Recursive]] types where the [[Base]] is
-    * [[scalaz.Foldable]].
+  /** An instance for [[turtles.Steppable]] types where the [[Base]] is
+    * [[cats.Foldable]].
     */
-  def recursiveShrink[T, F[_]: Functor: Foldable]
-    (implicit T: Recursive.Aux[T, F])
+  def foldableShrink[T, F[_]: Functor: Foldable]
+    (implicit T: Steppable.Aux[T, F])
       : Shrink[T] =
     Shrink(_.project.toList.toStream)
 
   /** An instance for [[turtles.Birecursive]] types where the [[Base]] has a
     * [[scalacheck.Shrink]] instance.
     */
-  def shrinkCorecursiveShrink[T, F[_]: Functor]
-    (implicit T: Birecursive.Aux[T, F], F: Shrink[F[T]])
+  def shrinkShrink[T, F[_]: Functor]
+    (implicit T: Steppable.Aux[T, F], F: Shrink[F[T]])
       : Shrink[T] =
     Shrink(t => F.shrink(t.project).map(_.embed))
 
   /** An instance for [[turtles.Birecursive]] types where the [[Base]] has
     * both [[scalaz.Foldable]] and [[scalacheck.Shrink]] instances.
     */
-  def corecursiveShrink[T, F[_]: Functor: Foldable]
-    (implicit T: Birecursive.Aux[T, F], F: Shrink[F[T]])
+  def shrinkFoldableShrink[T, F[_]: Functor: Foldable]
+    (implicit T: Steppable.Aux[T, F], F: Shrink[F[T]])
       : Shrink[T] =
-    Shrink(t => shrinkCorecursiveShrink[T, F].shrink(t) |+| recursiveShrink[T, F].shrink(t))
+    Shrink(t => shrinkShrink[T, F].shrink(t) |+| foldableShrink[T, F].shrink(t))
 
   implicit def fixShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Fix[F]] =
-    corecursiveShrink[Fix[F], F]
+    shrinkFoldableShrink[Fix[F], F]
 
   implicit def muShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Mu[F]] =
-    corecursiveShrink[Mu[F], F]
+    shrinkFoldableShrink[Mu[F], F]
 
   implicit def nuShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Nu[F]] =
-    corecursiveShrink[Nu[F], F]
+    shrinkFoldableShrink[Nu[F], F]
 }
 
 package object shrink extends ShrinkInstances

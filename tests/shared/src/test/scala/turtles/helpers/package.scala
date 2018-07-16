@@ -42,7 +42,7 @@ package object helpers {
   }
 
   // Evaluate as usual, but trap 0*0 as a special case
-  def peval[T](t: Exp[(T, Int)])(implicit T: Recursive.Aux[T, Exp]): Int =
+  def peval[T](t: Exp[(T, Int)])(implicit T: Steppable.Aux[T, Exp]): Int =
     t match {
       case Mul((Embed(Num(0)), _), (Embed(Num(0)), _)) => -1
       case Mul((_,             x), (_,             y)) => x * y

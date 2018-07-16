@@ -34,7 +34,7 @@ package object data
     */
   def attributePara[T, F[_]: Functor, A]
     (f: GAlgebra[(T, ?), F, A])
-    (implicit T: Corecursive.Aux[T, F])
+    (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
       : Algebra[F, Cofree[F, A]] =
     fa => Cofree(f(fa.map(x => (x.cata[T](_.lower.embed), x.head))), Now(fa))
 }

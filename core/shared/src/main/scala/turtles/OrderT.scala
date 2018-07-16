@@ -20,7 +20,7 @@ import simulacrum._
 }
 
 object OrderT {
-  def recursiveT[T[_[_]]: RecursiveT]: OrderT[T] = new OrderT[T] {
+  def steppableT[T[_[_]]: SteppableT]: OrderT[T] = new OrderT[T] {
     def compare[F[_]: Functor]
       (tf1: T[F], tf2: T[F])
       (implicit del: Delay[Order, F]) =

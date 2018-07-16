@@ -29,19 +29,25 @@ object Nu extends NuInstances {
 }
 
 abstract class NuInstances extends NuInstancesʹ {
-  implicit def birecursiveT: BirecursiveT[Nu] = new BirecursiveT[Nu] {
-    def projectT[F[_]: Functor](t: Nu[F]) = t.unNu(t.a).map(Nu(t.unNu, _))
-
+  implicit def steppableT: SteppableT[Nu] = new SteppableT[Nu] {
     // FIXME: ugh, shouldn’t have to redefine `colambek` in here?
-    def embedT[F[_]: Functor](t: F[Nu[F]]) = anaT(t)(_.map(projectT[F]))
-    override def anaT[F[_]: Functor, A](a: A)(f: A => F[A]) = Nu(f, a)
+    def embedT[F[_]: Functor](t: F[Nu[F]]) =
+      birecursiveT.anaT(t)(_.map(projectT[F]))
+    def projectT[F[_]: Functor](t: Nu[F]) = t.unNu(t.a).map(Nu(t.unNu, _))
   }
 
-  implicit def orderT: OrderT[Nu] = OrderT.recursiveT
+  implicit def birecursiveT: BirecursiveT[Nu] = new BirecursiveT[Nu] {
+    def cataT[F[_]: Functor, A](t: Nu[F])(f: Algebra[F, A]) =
+      hylo(t)(f, steppableT.projectT[F])
+
+    def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]) = Nu(f, a)
+  }
+
+  implicit def orderT: OrderT[Nu] = OrderT.steppableT
 
   implicit val showT: ShowT[Nu] = ShowT.recursiveT
 }
 
 abstract class NuInstancesʹ {
-  implicit lazy val equalT: EqT[Nu] = EqT.recursiveT
+  implicit lazy val equalT: EqT[Nu] = EqT.steppableT
 }

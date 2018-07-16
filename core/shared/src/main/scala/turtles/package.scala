@@ -8,7 +8,7 @@ import turtles.data.cofree._
 import turtles.data.free._
 import turtles.derived._
 import turtles.implicits._
-import turtles.instances.fixedpoint.{BirecursiveOptionOps, Nat}
+import turtles.instances.fixedpoint.{RecursiveOptionOps, Nat}
 import turtles.patterns.{CoEnv, EnvT}
 
 import cats._
@@ -202,7 +202,7 @@ package object turtles {
     */
   def unfoldPrism[T, F[_]: Traverse, A]
     (coalg: CoalgebraPrism[F, A])
-    (implicit T: Birecursive.Aux[T, F]) =
+    (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F]) =
     Prism[A, T](_.anaM[T](coalg.getOption))(_.cata(coalg.reverseGet))
 
   /** A NaturalTransformation that sequences two types
@@ -374,15 +374,15 @@ package object turtles {
   def transHylo[T, F[_]: Functor, G[_]: Functor, U, H[_]: Functor]
     (t: T)
     (φ: G[U] => H[U], ψ: F[T] => G[T])
-    (implicit T: Recursive.Aux[T, F], U: Corecursive.Aux[U, H])
+    (implicit T: Steppable.Aux[T, F], U: Steppable.Aux[U, H])
       : U =
-    hylo(t)(φ >>> (U.embed(_)), ψ <<< (T.project(_)))
+    hylo(t)(φ >>> U.embed, ψ <<< T.project)
 
   /**
     *
     * @group dist
     */
-  def distPara[T, F[_]: Functor](implicit T: Corecursive.Aux[T, F])
+  def distPara[T, F[_]: Functor](implicit T: Steppable.Aux[T, F])
       : DistributiveLaw[F, (T, ?)] =
     distZygo[F, T](T.embed(_))
 
@@ -392,7 +392,7 @@ package object turtles {
     */
   def distParaT[T, W[_]: Comonad, F[_]: Functor]
     (t: DistributiveLaw[F, W])
-    (implicit T: Corecursive.Aux[T, F])
+    (implicit T: Steppable.Aux[T, F])
       : DistributiveLaw[F, EnvT[T, W, ?]] =
     distZygoT[F, W, T](_.embed, t)
 
@@ -402,8 +402,8 @@ package object turtles {
     */
   def distCata[F[_]]: DistributiveLaw[F, Id] = FunctionK.id
 
-  /** A general [[DistributiveLaw]] for the case where the [[scalaz.Comonad]] is
-    * also [[scalaz.Applicative]].
+  /** A general [[DistributiveLaw]] for the case where the [[Comonad]] is
+    * also [[Applicative]].
     *
     * @group dist
     */
@@ -412,8 +412,8 @@ package object turtles {
       def apply[A](fga: F[G[A]]) = fga.sequence
     }
 
-  /** A general [[DistributiveLaw]] for the case where the [[scalaz.Comonad]] is
-    * also [[scalaz.Distributive]].
+  /** A general [[DistributiveLaw]] for the case where the [[Comonad]] is
+    * also [[Distributive]].
     *
     * @group dist
     */
@@ -487,7 +487,7 @@ package object turtles {
     *
     * @group dist
     */
-  def distApo[T, F[_]: Functor](implicit T: Recursive.Aux[T, F])
+  def distApo[T, F[_]: Functor](implicit T: Steppable.Aux[T, F])
       : DistributiveLaw[Either[T, ?], F] =
     distGApo[F, T](T.project(_))
 
@@ -548,9 +548,9 @@ package object turtles {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor, M[_]: Functor, A]
         (f: AlgebraM[M, F, A])
-        (implicit T: Recursive.Aux[T, EnvT[A, F, ?]])
+        (implicit T: Steppable.Aux[T, EnvT[A, F, ?]])
           : TransformM[M, T, F, EnvT[A, F, ?]] =
-        fa => f(fa.map(_.project.ask)).map(a => EnvT((a, fa)))
+        fa => f(fa.map(T.project(_).ask)).map(a => EnvT((a, fa)))
     }
   }
 
@@ -564,7 +564,7 @@ package object turtles {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor, A]
         (f: Algebra[F, A])
-        (implicit T: Recursive.Aux[T, EnvT[A, F, ?]])
+        (implicit T: Steppable.Aux[T, EnvT[A, F, ?]])
           : Transform[T, F, EnvT[A, F, ?]] =
         attributeAlgebraM[T][F, Id, A](f)
     }
@@ -584,7 +584,7 @@ package object turtles {
 
   def forgetAnnotation[T, R, F[_]: Functor, A]
     (t: T)
-    (implicit T: Recursive.Aux[T, EnvT[A, F, ?]], R: Corecursive.Aux[R, F])
+    (implicit T: Recursive.Aux[T, EnvT[A, F, ?]], R: Steppable.Aux[R, F])
       : R =
     t.cata(deattribute[F, A, R](_.embed))
 
@@ -602,7 +602,7 @@ package object turtles {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor, A]
         (k: A)
-        (implicit T: Recursive.Aux[T, EnvT[A, F, ?]])
+        (implicit T: Steppable.Aux[T, EnvT[A, F, ?]])
           : Transform[T, F, EnvT[A, F, ?]] =
         attributeAlgebra[T](Function.const[A, F[A]](k))
     }
@@ -617,9 +617,9 @@ package object turtles {
 
     final class PartiallyApplied[T] {
       def apply[U, F[_]: Functor]
-        (implicit T: Recursive.Aux[T, EnvT[U, F, ?]], U: Corecursive.Aux[U, F])
+        (implicit T: Steppable.Aux[T, EnvT[U, F, ?]], U: Steppable.Aux[U, F])
           : Transform[T, F, EnvT[U, F, ?]] =
-        attributeAlgebra[T](U.embed(_: F[U]))
+        attributeAlgebra[T](U.embed)
     }
   }
 
@@ -633,7 +633,7 @@ package object turtles {
     final class PartiallyApplied[W[_], M[_], T] {
       def apply[F[_]: Functor, A]
         (f: ElgotAlgebraM[W, M, F, A])
-        (implicit W: Comonad[W], M: Functor[M], T: Recursive.Aux[T, EnvT[A, F, ?]])
+        (implicit W: Comonad[W], M: Functor[M], T: Steppable.Aux[T, EnvT[A, F, ?]])
           : AlgebraicElgotTransformM[W, M, T, F, EnvT[A, F, ?]] =
         node => f(node.map(_.map(_.project.ask))).map(a => EnvT((a, node.extract)))
     }
@@ -649,7 +649,7 @@ package object turtles {
     final class PartiallyApplied[W[_], T] {
       def apply[F[_]: Functor, A]
         (f: ElgotAlgebra[W, F, A])
-        (implicit W: Comonad[W], T: Recursive.Aux[T, EnvT[A, F, ?]])
+        (implicit W: Comonad[W], T: Steppable.Aux[T, EnvT[A, F, ?]])
           : AlgebraicElgotTransform[W, T, F, EnvT[A, F, ?]] =
         attributeElgotM[W, Id, T](f)
     }
@@ -754,7 +754,8 @@ package object turtles {
   object size {
     def apply[N] = new PartiallyApplied[N]
     class PartiallyApplied[N] {
-      def apply[F[_]: Foldable](implicit N: Birecursive.Aux[N, Option])
+      def apply[F[_]: Foldable]
+        (implicit NS: Steppable.Aux[N, Option], NR: Recursive.Aux[N, Option])
           : Algebra[F, N] =
         _.foldRight(Now(Nat.one[N]))((a, b) => b.map(a + _)).value
     }
@@ -778,7 +779,7 @@ package object turtles {
     *
     * @group algebras
     */
-  def zipTuple[T, F[_]: Functor: Semigroupal](implicit T: Recursive.Aux[T, F])
+  def zipTuple[T, F[_]: Functor: Semigroupal](implicit T: Steppable.Aux[T, F])
       : Coalgebra[F, (T, T)] =
     p => Semigroupal[F].product[T, T](p._1.project, p._2.project)
 
@@ -795,7 +796,7 @@ package object turtles {
     *
     * @group algebras
     */
-  def mergeTuple[T, F[_]: Functor: Merge](implicit T: Recursive.Aux[T, F])
+  def mergeTuple[T, F[_]: Functor: Merge](implicit T: Steppable.Aux[T, F])
       : CoalgebraM[Option, F, (T, T)] =
     p => Merge[F].merge[T, T](p._1.project, p._2.project)
 
@@ -865,39 +866,39 @@ package object turtles {
       Show[F[A]] =
     F(A)
 
-  implicit def recursiveTRecursive[T[_[_]]: RecursiveT, F[_]]: Recursive.Aux[T[F], F] =
+  implicit def steppableTSteppable[T[_[_]]: SteppableT, F[_]: Functor]
+      : Steppable.Aux[T[F], F] =
+    new Steppable[T[F]] {
+      type Base[A] = F[A]
+
+      def embed(ft: F[T[F]]) = SteppableT[T].embedT[F](ft)
+      def project(t: T[F]) = SteppableT[T].projectT[F](t)
+    }
+
+  implicit def recursiveTRecursive[T[_[_]]: RecursiveT, F[_]: Functor]
+      : Recursive.Aux[T[F], F] =
     new Recursive[T[F]] {
       type Base[A] = F[A]
 
-      def project(t: T[F])(implicit F: Functor[F]) =
-        RecursiveT[T].projectT[F](t)
-      override def cata[A](t: T[F])(f: Algebra[F, A])(implicit F: Functor[F]) =
-        RecursiveT[T].cataT[F, A](t)(f)
+      def cata[A](t: T[F])(f: Algebra[F, A]) = RecursiveT[T].cataT[F, A](t)(f)
     }
 
-  implicit def corecursiveTCorecursive[T[_[_]]: CorecursiveT, F[_]]: Corecursive.Aux[T[F], F] =
+  implicit def corecursiveTCorecursive[T[_[_]]: CorecursiveT, F[_]: Functor]
+      : Corecursive.Aux[T[F], F] =
     new Corecursive[T[F]] {
       type Base[A] = F[A]
 
-      def embed(t: F[T[F]])(implicit F: Functor[F]) =
-        CorecursiveT[T].embedT[F](t)
-      override def ana[A](a: A)(f: Coalgebra[F, A])(implicit F: Functor[F]) =
-        CorecursiveT[T].anaT[F, A](a)(f)
+      def ana[A](a: A)(f: Coalgebra[F, A]) = CorecursiveT[T].anaT[F, A](a)(f)
     }
 
-  implicit def birecursiveTBirecursive[T[_[_]]: BirecursiveT, F[_]]: Birecursive.Aux[T[F], F] =
+  implicit def birecursiveTBirecursive[T[_[_]]: BirecursiveT, F[_]: Functor]
+      : Birecursive.Aux[T[F], F] =
     new Birecursive[T[F]] {
       type Base[A] = F[A]
 
-      def project(t: T[F])(implicit F: Functor[F]) =
-        BirecursiveT[T].projectT[F](t)
-      override def cata[A](t: T[F])(f: Algebra[F, A])(implicit F: Functor[F]) =
-        BirecursiveT[T].cataT[F, A](t)(f)
+      def cata[A](t: T[F])(f: Algebra[F, A]) = BirecursiveT[T].cataT[F, A](t)(f)
 
-      def embed(t: F[T[F]])(implicit F: Functor[F]) =
-        BirecursiveT[T].embedT[F](t)
-      override def ana[A](a: A)(f: Coalgebra[F, A])(implicit F: Functor[F]) =
-        BirecursiveT[T].anaT[F, A](a)(f)
+      def ana[A](a: A)(f: Coalgebra[F, A]) = BirecursiveT[T].anaT[F, A](a)(f)
     }
 
   implicit def orderTOrder[T[_[_]], F[_]: Functor](implicit T: OrderT[T], F: Delay[Order, F]): Order[T[F]] =
@@ -909,7 +910,9 @@ package object turtles {
   implicit def showTShow[T[_[_]], F[_]: Functor](implicit T: ShowT[T], F: Delay[Show, F]): Show[T[F]] =
     T.showT[F](F)
 
-  implicit def birecursiveTFunctor[T[_[_]]: BirecursiveT, F[_, _]](implicit F: Bifunctor[F]): Functor[λ[α => T[F[α, ?]]]] =
+  implicit def recursiveTFunctor[T[_[_]]: SteppableT: RecursiveT, F[_, _]]
+    (implicit F: Bifunctor[F])
+      : Functor[λ[α => T[F[α, ?]]]] =
     new Functor[λ[α => T[F[α, ?]]]] {
       def map[A, B](fa: T[F[A, ?]])(f: A => B) =
         fa.transCata[T[F[B, ?]]](_.leftMap[B](f))

@@ -27,24 +27,24 @@ trait ArbitraryInstancesʹ {
 
 trait ArbitraryInstances extends ArbitraryInstancesʹ {
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
-  def corecursiveArbitrary[T, F[_]: Functor]
-    (implicit T: Corecursive.Aux[T, F], fArb: Delay[Arbitrary, F])
+  def steppableArbitrary[T, F[_]: Functor]
+    (implicit T: Steppable.Aux[T, F], fArb: Delay[Arbitrary, F])
       : Arbitrary[T] =
     Arbitrary(Gen.sized(size =>
       fArb(Arbitrary(
         if (size <= 0)
           Gen.fail[T]
         else
-          Gen.resize(size - 1, corecursiveArbitrary[T, F].arbitrary))).arbitrary.map(_.embed)))
+          Gen.resize(size - 1, steppableArbitrary[T, F].arbitrary))).arbitrary.map(_.embed)))
 
   implicit def fixArbitrary[F[_]: Functor](implicit fArb: Delay[Arbitrary, F]): Arbitrary[Fix[F]] =
-    corecursiveArbitrary[Fix[F], F]
+    steppableArbitrary[Fix[F], F]
 
   implicit def muArbitrary[F[_]: Functor](implicit fArb: Delay[Arbitrary, F]): Arbitrary[Mu[F]] =
-    corecursiveArbitrary[Mu[F], F]
+    steppableArbitrary[Mu[F], F]
 
   implicit def nuArbitrary[F[_]: Functor](implicit fArb: Delay[Arbitrary, F]): Arbitrary[Nu[F]] =
-    corecursiveArbitrary[Nu[F], F]
+    steppableArbitrary[Nu[F], F]
 
   implicit def coEnvArbitrary[E: Arbitrary, F[_]](
     implicit F: Delay[Arbitrary, F]):
@@ -83,12 +83,12 @@ trait ArbitraryInstances extends ArbitraryInstancesʹ {
   implicit def cofreeArbitrary[F[_]: Functor, A]
     (implicit F: Delay[Arbitrary, F], A: Arbitrary[A])
       : Arbitrary[Cofree[F, A]] =
-    corecursiveArbitrary[Cofree[F, A], EnvT[A, F, ?]]
+    steppableArbitrary[Cofree[F, A], EnvT[A, F, ?]]
 
   implicit def freeArbitrary[F[_]: Functor, A]
     (implicit F: Delay[Arbitrary, F], A: Arbitrary[A])
       : Arbitrary[Free[F, A]] =
-    corecursiveArbitrary[Free[F, A], CoEnv[A, F, ?]]
+    steppableArbitrary[Free[F, A], CoEnv[A, F, ?]]
 
   implicit val optionArbitrary: Delay[Arbitrary, Option] =
     new Delay[Arbitrary, Option] {

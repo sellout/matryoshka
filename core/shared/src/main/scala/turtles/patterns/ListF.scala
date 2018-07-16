@@ -36,7 +36,9 @@ object ListF {
     case Nil    => NilF()
   }
 
-  def takeUpTo[N, T, A](implicit N: Recursive.Aux[N, Option], T: Recursive.Aux[T, ListF[A, ?]]): Coalgebra[ListF[A, ?], (N, T)] =
+  def takeUpTo[N, T, A]
+    (implicit N: Steppable.Aux[N, Option], T: Steppable.Aux[T, ListF[A, ?]])
+      : Coalgebra[ListF[A, ?], (N, T)] =
     pair => pair._1.project.fold[ListF[A, (N, T)]](NilF())(p => pair._2.project.map((p, _)))
 
   def find[A](cond: A => Boolean): Algebra[ListF[A, ?], Option[A]] = {
@@ -61,7 +63,7 @@ object ListF {
       }
     }
 
-  implicit def bitraverse: Bitraverse[ListF] = new Bitraverse[ListF] {
+  implicit val bitraverse: Bitraverse[ListF] = new Bitraverse[ListF] {
     def bitraverse[G[_], A, B, C, D](
       fab: ListF[A, B])(
       f: A ⇒ G[C], g: B ⇒ G[D])(

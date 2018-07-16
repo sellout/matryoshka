@@ -63,7 +63,6 @@ sealed abstract class AndMaybeInstances {
           case Only(a)      => f(a, c)
         }
     }
-
   implicit def equal[A: Eq]: Delay[Eq, AndMaybe[A, ?]] =
     new Delay[Eq, AndMaybe[A, ?]] {
       def apply[B](eql: Eq[B]) = {

@@ -26,38 +26,35 @@ package object fixedpoint {
   type Nat = Mu[Option]
 
   object Nat {
-    def zero[N](implicit N: Corecursive.Aux[N, Option]) = none[N].embed
+    def zero[N](implicit N: Steppable.Aux[N, Option]) = none[N].embed
 
-    def succ[N](prev: N)(implicit N: Corecursive.Aux[N, Option]) =
+    def succ[N](prev: N)(implicit N: Steppable.Aux[N, Option]) =
       prev.some.embed
 
-    def one[N](implicit N: Corecursive.Aux[N, Option]) = succ(zero)
+    def one[N](implicit N: Steppable.Aux[N, Option]) = succ(zero)
 
     val fromInt: CoalgebraM[Option, Option, Int] =
       x => if (x < 0) None else Some(if (x > 0) (x - 1).some else None)
 
     // NB: This isn’t defined via `AlgebraPrism` because it only holds across a
     //     recursive structure.
-    def intPrism[T](implicit T: Birecursive.Aux[T, Option]) =
+    def intPrism[T]
+      (implicit TS: Steppable.Aux[T, Option], TB: Birecursive.Aux[T, Option]) =
       Prism[Int, T](_.anaM[T](fromInt))(_.cata(height))
+  }
+
+  implicit class SteppableOptionOps[T]
+    (self: T)
+    (implicit T: Steppable.Aux[T, Option]) {
+    def succ = Nat.succ(self)
   }
 
   implicit class RecursiveOptionOps[T]
     (self: T)
     (implicit T: Recursive.Aux[T, Option]) {
     def toInt = self.cata(height)
-  }
 
-  implicit class CorecursiveOptionOps[T]
-    (self: T)
-    (implicit T: Corecursive.Aux[T, Option]) {
-    def succ = Nat.succ(self)
-  }
-
-  implicit class BirecursiveOptionOps[T]
-    (self: T)
-    (implicit T: Birecursive.Aux[T, Option]) {
-    def +(other: T) = other.cata[T] {
+    def +(other: T)(implicit TS: Steppable.Aux[T, Option]) = other.cata[T] {
       case None => self
       case o    => o.embed
     }
@@ -93,11 +90,22 @@ package object fixedpoint {
         def apply[N, A]
           (n: N)
           (elem: => A)
-          (implicit N: Recursive.Aux[N, Option], L: Corecursive.Aux[L, ListF[A, ?]])
+          (implicit
+            NS: Steppable.Aux[N, Option],
+            NR: Recursive.Aux[N, Option],
+            LS: Steppable.Aux[L, ListF[A, ?]],
+            LC: Corecursive.Aux[L, ListF[A, ?]])
             : L =
           n.transAna[L](tuple(elem)(_))
       }
     }
+  }
+
+  implicit class SteppableListFOps[T, A]
+    (self: T)
+    (implicit T: Steppable.Aux[T, ListF[A, ?]]) {
+    def headOption: Option[A] = self.project.headOption
+    def tailOption: Option[T] = self.project.tailOption
   }
 
   // FIXME: This implicit conversion seems to not get found, so we specialize
@@ -107,25 +115,29 @@ package object fixedpoint {
     (implicit T: Recursive.Aux[T, ListF[A, ?]]) {
     def find(cond: A => Boolean): Option[A] = self.cata(ListF.find(cond))
     def length: Int = self.cata(height)
-    def headOption: Option[A] = self.project.headOption
-    def tailOption: Option[T] = self.project.tailOption
   }
 
-  implicit class BirecursiveListFOps[T, A]
+  implicit class CorecursiveListFOps[T, A]
     (self: T)
-    (implicit T: Birecursive.Aux[T, ListF[A, ?]]) {
-    def take[N](i: N)(implicit N: Recursive.Aux[N, Option])
+    (implicit T: Corecursive.Aux[T, ListF[A, ?]]) {
+    def take[N]
+      (i: N)
+      (implicit N: Steppable.Aux[N, Option], TS: Steppable.Aux[T, ListF[A, ?]])
         : T =
       (i, self).ana[T](ListF.takeUpTo)
   }
+
+  implicit def steppableTListFOps[T[_[_]]: SteppableT, A](self: T[ListF[A, ?]])
+      : SteppableListFOps[T[ListF[A, ?]], A] =
+    new SteppableListFOps[T[ListF[A, ?]], A](self)
 
   implicit def recursiveTListFOps[T[_[_]]: RecursiveT, A](self: T[ListF[A, ?]])
       : RecursiveListFOps[T[ListF[A, ?]], A] =
     new RecursiveListFOps[T[ListF[A, ?]], A](self)
 
-  implicit def birecursiveTListFOps[T[_[_]]: BirecursiveT, A](self: T[ListF[A, ?]])
-      : BirecursiveListFOps[T[ListF[A, ?]], A] =
-    new BirecursiveListFOps[T[ListF[A, ?]], A](self)
+  implicit def corecursiveTListFOps[T[_[_]]: CorecursiveT, A](self: T[ListF[A, ?]])
+      : CorecursiveListFOps[T[ListF[A, ?]], A] =
+    new CorecursiveListFOps[T[ListF[A, ?]], A](self)
 
   implicit def recursiveTListFFoldable[T[_[_]]: RecursiveT]: Foldable[λ[α => T[ListF[α, ?]]]] =
     new Foldable[λ[α => T[ListF[α, ?]]]] {
@@ -148,7 +160,10 @@ package object fixedpoint {
         }
     }
 
-  implicit def birecursiveListFMonoid[T, A](implicit T: Birecursive.Aux[T, ListF[A, ?]])
+  implicit def recursiveListFMonoid[T, A]
+    (implicit
+      TS: Steppable.Aux[T, ListF[A, ?]],
+      TR: Recursive.Aux[T, ListF[A, ?]])
       : Monoid[T] =
     new Monoid[T] {
       def empty = NilF[A, T]().embed
@@ -165,10 +180,13 @@ package object fixedpoint {
   type NonEmptyList[A] = Mu[AndMaybe[A, ?]]
   type NonEmptyColist[A] = Nu[AndMaybe[A, ?]]
 
-  implicit class RecursiveAndMaybeOps[T, A]
+  implicit class SteppableAndMaybeOps[T, A]
     (self: T)
-    (implicit T: Recursive.Aux[T, AndMaybe[A, ?]]) {
-    def toPossiblyEmpty[L](implicit L: Corecursive.Aux[L, ListF[A, ?]]) =
+    (implicit T: Steppable.Aux[T, AndMaybe[A, ?]]) {
+    def toPossiblyEmpty[L]
+      (implicit
+        LS: Steppable.Aux[L, ListF[A, ?]],
+        LC: Corecursive.Aux[L, ListF[A, ?]]) =
       self.transApo[L, ListF[A, ?]] {
         case Indeed(a, b) => ConsF(a, b.asRight)
         case Only(a)      => ConsF(a, NilF[A, L]().embed.asLeft)
@@ -185,7 +203,9 @@ package object fixedpoint {
         case (h, t) => if (cond(h)) h.asLeft else t.asRight
       }
 
-    def take[N, T, A](implicit N: Recursive.Aux[N, Option], T: Recursive.Aux[T, (A, ?)]): Coalgebra[ListF[A, ?], (N, T)] = {
+    def take[N, T, A]
+      (implicit N: Steppable.Aux[N, Option], T: Steppable.Aux[T, (A, ?)])
+        : Coalgebra[ListF[A, ?], (N, T)] = {
       case (n, s) =>
         n.project.fold[ListF[A, (N, T)]](
           NilF())(
@@ -203,7 +223,9 @@ package object fixedpoint {
     def toIndeed[A] = λ[(A, ?) ~> AndMaybe[A, ?]](p => Indeed(p._1, p._2))
   }
 
-  implicit class RecursiveTuple2Ops[T, A](self: T)(implicit T: Recursive.Aux[T, (A, ?)]) {
+  implicit class SteppableTuple2Ops[T, A]
+    (self: T)
+    (implicit T: Steppable.Aux[T, (A, ?)]) {
     def head: A = self.project._1
 
     def tail: T = self.project._2
@@ -211,43 +233,60 @@ package object fixedpoint {
     /** Colists are simply streams that may terminate, so a stream is easily
       * converted to a Colist that doesn’t terminate.
       */
-    def toColist[L](implicit L: Corecursive.Aux[L, ListF[A, ?]]): L =
+    def toColist[L]
+      (implicit
+        LS: Steppable.Aux[L, ListF[A, ?]],
+        LC: Corecursive.Aux[L, ListF[A, ?]])
+        : L =
       self.transAna[L](Stream.toConsF(_))
 
-    def toNEColist[L](implicit L: Corecursive.Aux[L, AndMaybe[A, ?]]): L =
+    def toNEColist[L]
+      (implicit
+        LS: Steppable.Aux[L, AndMaybe[A, ?]],
+        LC: Corecursive.Aux[L, AndMaybe[A, ?]])
+        : L =
       self.transAna[L](Stream.toIndeed(_))
-  }
-
-  implicit def RecursiveTTuple2Ops[T[_[_]]: RecursiveT, A](self: T[(A, ?)])
-      : RecursiveTuple2Ops[T[(A, ?)], A] =
-    new RecursiveTuple2Ops[T[(A, ?)], A](self)
-
-  implicit class BirecursiveTuple2Ops[T, A](self: T)(implicit T: Birecursive.Aux[T, (A, ?)]) {
-    /** Drops exactly `n` elements from the stream.
-      * This doesn’t expose the Coalgebra because it returns
-      * `Either[Stream, Stream]`, which isn’t the type of `drop`.
-      */
-    def drop[N](n: N)(implicit N: Recursive.Aux[N, Option]): T =
-      (n, self).anaM[T] {
-        case (r, stream) =>
-          r.project.fold[Either[T, (A, (N, T))]](
-            stream.asLeft)(
-            prev => stream.project.map((prev, _)).asRight)
-      }.merge
 
     object take {
       def apply[L] = new PartiallyApplied[L]
       class PartiallyApplied[L] {
-        def apply[N](n: N)(implicit N: Recursive.Aux[N, Option], L: Corecursive.Aux[L, ListF[A, ?]])
+        def apply[N]
+          (n: N)
+          (implicit
+            N: Steppable.Aux[N, Option],
+            L: Corecursive.Aux[L, ListF[A, ?]])
             : L =
           (n, self).ana[L](Stream.take[N, T, A])
       }
     }
   }
 
-  implicit def BirecursiveTTuple2Ops[T[_[_]]: BirecursiveT, A](self: T[(A, ?)])
-      : BirecursiveTuple2Ops[T[(A, ?)], A] =
-    new BirecursiveTuple2Ops[T[(A, ?)], A](self)
+  implicit def SteppableTTuple2Ops[T[_[_]]: SteppableT, A](self: T[(A, ?)])
+      : SteppableTuple2Ops[T[(A, ?)], A] =
+    new SteppableTuple2Ops[T[(A, ?)], A](self)
+
+  implicit class CorecursiveTuple2Ops[T, A]
+    (self: T)
+    (implicit T: Corecursive.Aux[T, (A, ?)]) {
+    /** Drops exactly `n` elements from the stream.
+      * This doesn’t expose the Coalgebra because it returns
+      * `Either[Stream, Stream]`, which isn’t the type of `drop`.
+      */
+    def drop[N]
+      (n: N)
+      (implicit N: Steppable.Aux[N, Option], TS: Steppable.Aux[T, (A, ?)])
+        : T =
+      (n, self).anaM[T] {
+        case (r, stream) =>
+          r.project.fold[Either[T, (A, (N, T))]](
+            stream.asLeft)(
+            prev => stream.project.map((prev, _)).asRight)
+      }.merge
+  }
+
+  implicit def CorecursiveTTuple2Ops[T[_[_]]: CorecursiveT, A](self: T[(A, ?)])
+      : CorecursiveTuple2Ops[T[(A, ?)], A] =
+    new CorecursiveTuple2Ops[T[(A, ?)], A](self)
 
   /** Encodes a function that may diverge.
     */
@@ -308,7 +347,7 @@ package object fixedpoint {
 
     /** Returns `left` if the result was found within the given number of steps.
       */
-    def runFor[N](steps: N)(implicit N: Recursive.Aux[N, Option])
+    def runFor[N](steps: N)(implicit N: Steppable.Aux[N, Option])
         : Either[A, Partial[A]] =
       (steps, self).anaM[Partial[A]] {
         case (r, p) => r.project.fold[Either[Either[A, Partial[A]], Either[A, (N, Partial[A])]]](

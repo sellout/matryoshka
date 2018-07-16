@@ -89,9 +89,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[M[_]: Monad, F[_]: Traverse]
         (f: CoalgebraM[M, F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : M[T] =
-        T.anaM(self)(f)
+        TC.anaM(self)(f)
     }
   }
 
@@ -113,9 +113,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[N[_]: Monad: Traverse, M[_]: Monad, F[_]: Traverse]
         (k: DistributiveLaw[N, F], f: GCoalgebraM[N, M, F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : M[T] =
-        T.ganaM(self)(k, f)
+        TC.ganaM(self)(k, f)
     }
   }
 
@@ -137,9 +137,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
         (f: GCoalgebra[Either[T, ?], F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : T =
-        T.apo(self)(f)
+        TC.apo(self)(f)
     }
   }
 
@@ -149,9 +149,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[M[_]: Monad, F[_]: Traverse]
         (f: GCoalgebraM[Either[T, ?], M, F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : M[T] =
-        T.apoM(self)(f)
+        TC.apoM(self)(f)
     }
   }
 
@@ -161,9 +161,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor, B]
         (f: Coalgebra[F, B], g: GCoalgebra[Either[B, ?], F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : T =
-        T.gapo(self)(f, g)
+        TC.gapo(self)(f, g)
     }
   }
 
@@ -173,9 +173,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
         (f: ElgotCoalgebra[Either[T, ?], F, A])
-        (implicit T: Corecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
           : T =
-        T.elgotApo(self)(f)
+        TC.elgotApo(self)(f)
     }
   }
 
@@ -185,9 +185,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[F[_]: Functor]
         (e: F ~> F, g: Coalgebra[F, A])
-        (implicit T: Birecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F])
           : T =
-        T.postpro(self)(e, g)
+        TB.postpro(self)(e, g)
     }
   }
 
@@ -197,9 +197,9 @@ sealed class IdOps[A](self: A) {
     final class PartiallyApplied[T] {
       def apply[N[_]: Monad, F[_]: Functor]
         (k: DistributiveLaw[N, F], e: F ~> F, g: GCoalgebra[N, F, A])
-        (implicit T: Birecursive.Aux[T, F])
+        (implicit TS: Steppable.Aux[T, F], TB: Birecursive.Aux[T, F])
           : T =
-        T.gpostpro(self)(k, e, g)
+        TB.gpostpro(self)(k, e, g)
     }
   }
 
@@ -217,7 +217,7 @@ sealed class IdOps[A](self: A) {
 
   def futuM[T, M[_]: Monad, F[_]: Traverse]
     (f: GCoalgebraM[Free[F, ?], M, F, A])
-    (implicit T: Corecursive.Aux[T, F])
+    (implicit TS: Steppable.Aux[T, F], TC: Corecursive.Aux[T, F])
       : M[T] =
-    T.futuM(self)(f)
+    TC.futuM(self)(f)
 }

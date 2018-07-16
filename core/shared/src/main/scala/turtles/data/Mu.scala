@@ -18,23 +18,29 @@ final case class Mu[F[_]](unMu: Algebra[F, ?] ~> Id)
 object Mu extends MuInstances
 
 abstract class MuInstances extends MuInstancesʹ {
-  implicit def birecursiveT: BirecursiveT[Mu] = new BirecursiveT[Mu] {
+  implicit def steppableT: SteppableT[Mu] = new SteppableT[Mu] {
     // FIXME: ugh, shouldn’t have to redefine `lambek` in here?
     def projectT[F[_]: Functor](t: Mu[F]) =
-      cataT[F, F[Mu[F]]](t)(_.map(embedT[F]))
-    override def cataT[F[_]: Functor, A](t: Mu[F])(f: Algebra[F, A]) = t.unMu(f)
-
+      birecursiveT.cataT[F, F[Mu[F]]](t)(_.map(embedT[F]))
     def embedT[F[_]: Functor](t: F[Mu[F]]) =
       Mu(new (Algebra[F, ?] ~> Id) {
-        def apply[A](fa: Algebra[F, A]): A = fa(t.map(cataT(_)(fa)))
+        def apply[A](fa: Algebra[F, A]): A =
+          fa(t.map(birecursiveT.cataT(_)(fa)))
       })
   }
 
-  implicit def orderT: OrderT[Mu] = OrderT.recursiveT
+  implicit def birecursiveT: BirecursiveT[Mu] = new BirecursiveT[Mu] {
+    def cataT[F[_]: Functor, A](t: Mu[F])(f: Algebra[F, A]) = t.unMu(f)
+
+    def anaT[F[_]: Functor, A](a: A)(f: Coalgebra[F, A]) =
+      hylo(a)(steppableT.embedT[F], f)
+  }
+
+  implicit def orderT: OrderT[Mu] = OrderT.steppableT
 
   implicit val showT: ShowT[Mu] = ShowT.recursiveT
 }
 
 abstract class MuInstancesʹ {
-  implicit lazy val equalT: EqT[Mu] = EqT.recursiveT
+  implicit lazy val equalT: EqT[Mu] = EqT.steppableT
 }
