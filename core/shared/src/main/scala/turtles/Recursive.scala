@@ -134,13 +134,12 @@ trait Recursive[T] extends Based[T] { self =>
     elgotCata[EnvT[B, W, ?], A](t)(distZygoT(f, w), g)
 
   /** Mutually-recursive fold. */
-  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   def mutu[A, B]
     (t: T)
     (f: GAlgebra[(A, ?), Base, B], g: GAlgebra[(B, ?), Base, A])
-    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+    (implicit BF: Functor[Base])
       : A =
-    g(T.project(t).map(x => (mutu(x)(g, f), mutu(x)(f, g))))
+    cata(t)(f <<< BF.lift((_: (B, A)).swap) &&& g)._2
 
   def histo[A]
     (t: T)
