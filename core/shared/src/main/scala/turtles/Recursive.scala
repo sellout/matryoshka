@@ -174,10 +174,9 @@ trait Recursive[T] extends Based[T] { self =>
     k: DistributiveLaw[Base, W], e: Base ~> Base, f: GAlgebra[W, Base, A])(
     implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
       A =
-    hylo[Yoneda[Base, ?], T, W[A]](
+    ghylo[W, Id, Base, T, A](
       t)(
-      fwa => k((fwa.map(_.coflatten)).run).map(f),
-        t => Yoneda(T.project(t)).map(cata[T](_)(c => T.embed(e(c))))).extract
+      k, distAna, f, T.project(_).map(cata[T](_)(e(_).embed)))
 
   def gcataZygo[W[_]: Comonad, A, B]
     (t: T)
@@ -337,11 +336,14 @@ trait Recursive[T] extends Based[T] { self =>
     loop(Monoid[Z].empty, t)
   }
 
-  def convertTo[R]
-    (t: T)
-    (implicit R: Steppable.Aux[R, Base], BF: Functor[Base])
-      : R =
-    cata[R](t)(R.embed(_))
+  /** Converts from this type to any `Steppable` type. I.e., you can
+    * “expand” and least fixed point to another fixed point.
+    *
+    * This is normally unnecessary, unless some function you are passing
+    * it to is insufficiently generalized.
+    */
+  def convertTo[R](t: T)(implicit R: Steppable.Aux[R, Base]): R =
+    cata[R](t)(R.embed)
 
   def transCata[U, G[_]: Functor]
     (t: T)

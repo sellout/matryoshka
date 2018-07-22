@@ -115,10 +115,21 @@ trait Corecursive[T] extends Based[T] { self =>
     k: DistributiveLaw[N, Base], e: Base ~> Base, ψ: GCoalgebra[N, Base, A])(
     implicit T: Steppable.Aux[T, Base], BF: Functor[Base], N: Monad[N]):
       T =
-    hylo[Yoneda[Base, ?], N[A], T](
-      a.pure[N])(
-      fa => T.embed((fa.map(ana(_)(x => e(T.project(x))))).run),
-        ma => Yoneda(k(ma.map(ψ))).map(_.flatten))
+    ghylo[Id, N, Base, A, T](
+      a)(
+      distCata,
+        k,
+        BF.lift[T, T](ana[T](_)(x => e(T.project(x)))) >>> T.embed,
+        ψ)
+
+  /** Converts from any `Steppable` type to this type. I.e., you can
+    * expand any fixed pount to the greatest fixed point.
+    *
+    * This is normally unnecessary, unless some function you are passing
+    * it to is insufficiently generalized.
+    */
+  def convertFrom[R](r: R)(implicit R: Steppable.Aux[R, Base]): T =
+    ana[R](r)(R.project)
 
   def transAna[U, G[_]: Functor]
     (u: U)
