@@ -553,9 +553,9 @@ class RecursiveSpec extends TurtlesSuite {
       })
   }
 
-  test("gpara should behave like para") {
+  test("paraT should behave like para") {
     mul(num(0), mul(num(0), num(1)))
-      .gpara[Id, Int](distCata, exp => peval(exp.map(_.runEnvT))) should
+      .paraT[Id, Int](distCata, exp => peval(exp.map(_.runEnvT))) should
     === (0)
   }
 

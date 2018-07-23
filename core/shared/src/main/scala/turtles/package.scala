@@ -491,20 +491,10 @@ package object turtles {
   def distHisto[F[_]: Functor] =
     new DistributiveLaw[F, Cofree[F, ?]] {
       def apply[α](m: F[Cofree[F, α]]) =
-        distGHisto[F, F](FunctionK.id[λ[α => F[F[α]]]]).apply(m)
-    }
-
-  /**
-    *
-    * @group dist
-    */
-  // TODO: Should be able to generalize this over `Recursive.Aux[T, EnvT[…]]`
-  //       somehow, then it wouldn’t depend on Scalaz and would work with any
-  //       `Cofree` representation.
-  def distGHisto[F[_]: Functor,  H[_]: Functor](k: DistributiveLaw[F, H]) =
-    new DistributiveLaw[F, Cofree[H, ?]] {
-      def apply[α](m: F[Cofree[H, α]]) =
-        m.ana[Cofree[H, F[α]]](as => EnvT[F[α], H, F[Cofree[H, α]]]((as.map(_.extract), k(as.map(_.tail.value)))))
+        m.ana[Cofree[F, F[α]]](
+          as => EnvT[F[α], F, F[Cofree[F, α]]]((
+            as.map(_.extract),
+            as.map(_.tail.value))))
     }
 
   /**
@@ -550,7 +540,7 @@ package object turtles {
   def distFutu[F[_]: Functor] =
     new DistributiveLaw[Free[F, ?], F] {
       def apply[α](m: Free[F, F[α]]) =
-        distGFutu[F, F](FunctionK.id[λ[α => F[F[α]]]]).apply(m)
+        m.cata[F[Free[F, α]]](_.run.fold(_.map(Free.pure), _.map(Free.roll)))
     }
 
   /**
@@ -560,11 +550,22 @@ package object turtles {
   // TODO: Should be able to generalize this over `Recursive.Aux[T, CoEnv[…]]`
   //       somehow, then it wouldn’t depend on Scalaz and would work with any
   //       `Free` representation.
-  def distGFutu[H[_]: Functor, F[_]: Functor](k: DistributiveLaw[H, F])
-      : DistributiveLaw[Free[H, ?], F] =
-    new DistributiveLaw[Free[H, ?], F] {
-      def apply[A](m: Free[H, F[A]]) =
-        m.cata[F[Free[H, A]]](_.run.fold(_.map(Free.pure), k(_).map(Free.roll)))
+  // FIXME: I think the `Monad` constraint here isn’t necessary, but it’s on
+  //        `cats.FreeT.resume`.
+  def distFutuT[H[_]: Monad, F[_]: Functor](k: DistributiveLaw[H, F]) =
+    new DistributiveLaw[FreeT[F, H, ?], F] {
+      def apply[A](m: FreeT[F, H, F[A]]) = {
+        def d(x: FreeT[F, H, F[A]]): F[FreeT[F, H, A]] =
+          k(x.resume.map(dʹ(_))).map(FreeT.defer[F, H, A])
+        def dʹ(e: Either[F[FreeT[F, H, F[A]]], F[A]])
+            : F[Either[A, F[FreeT[F, H, A]]]] =
+          e match {
+            case Left(ff) => ff.map(x => Right(d(x)))
+            case Right(ff) => ff.map(Left(_))
+          }
+
+        d(m)
+      }
     }
 
   /** Turns any F-algebra, into a transform that attributes the tree with

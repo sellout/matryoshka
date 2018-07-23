@@ -9,6 +9,7 @@ import slamdata.Predef.{Eq => _, _}
 import turtles.derived._
 
 import cats._
+import cats.data._
 import cats.free._
 import cats.implicits._
 
@@ -16,14 +17,8 @@ import cats.implicits._
 trait Corecursive[T] extends Based[T] { self =>
   implicit val corec: Corecursive.Aux[T, Base] = self
 
+  /** The fundamental operation on all potentially infinite data types. */
   def ana[A](a: A)(f: Coalgebra[Base, A]): T
-
-  def anaM[M[_]: Monad, A]
-    (a: A)
-    (f: CoalgebraM[M, Base, A])
-    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
-      : M[T] =
-    hyloM[M, Base, A, T](a)(T.embed(_).pure[M], f)
 
   def gana[N[_]: Monad, A]
     (a: A)
@@ -31,13 +26,6 @@ trait Corecursive[T] extends Based[T] { self =>
     (implicit BF: Functor[Base])
       : T =
     ana[N[A]](a.pure[N])(na => k(na.map(f)).map(_.flatten))
-
-  def ganaM[N[_]: Monad: Traverse, M[_]: Monad, A](
-    a: A)(
-    k: DistributiveLaw[N, Base], f: GCoalgebraM[N, M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[T] =
-    ghyloM[Id, N, M, Base, A, T](a)(distCata, k, T.embed(_).pure[M], f)
 
   def elgotAna[N[_]: Monad, A](
     a: A)(
@@ -66,23 +54,19 @@ trait Corecursive[T] extends Based[T] { self =>
     */
   def gapo[A, B]
     (a: A)
-    (ψ0: Coalgebra[Base, B], ψ: GCoalgebra[Either[B, ?], Base, A])
+    (ψʹ: Coalgebra[Base, B], ψ: GCoalgebra[Either[B, ?], Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : T =
-    hylo[λ[α => Base[Either[B, α]]], A, T](
-      a)(
-      fa => T.embed(fa.map(_.leftMap(ana(_)(ψ0)).merge)), ψ)(
-      BF.compose[Either[B, ?]])
+    gana[Either[B, ?], A](a)(distGApo(ψʹ), ψ)
 
-  def apoM[M[_]: Monad, A](
-    a: A)(
-    f: GCoalgebraM[Either[T, ?], M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[T] =
-    hyloM[M, λ[α => Base[Either[T, α]]], A, T](
-      a)(
-      fa => T.embed(fa.map(_.merge)).pure[M], f)(
-      Monad[M], BT.compose[Either[T, ?]])
+  def gapoT[M[_]: Monad, A, B]
+    (a: A)
+    (ψʹ: Coalgebra[Base, B],
+      k: DistributiveLaw[M, Base],
+      ψ: GCoalgebra[EitherT[M, B, ?], Base, A])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : T =
+    gana[EitherT[M, B, ?], A](a)(distGApoT(ψʹ, k), ψ)
 
   def futu[A]
     (a: A)
@@ -91,6 +75,12 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     gana[Free[Base, ?], A](a)(distFutu, f)
 
+  def futuT[H[_]: Monad, A](a: A)
+    (k: DistributiveLaw[H, Base], ψ: GCoalgebra[FreeT[Base, H, ?], Base, A])
+    (implicit BF: Functor[Base])
+      : T =
+    gana[FreeT[Base, H, ?], A](a)(distFutuT(k), ψ)
+
   def elgotFutu[A]
     (a: A)
     (f: ElgotCoalgebra[Free[Base, ?], Base, A])
@@ -98,6 +88,36 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     elgotAna[Free[Base, ?], A](a)(distFutu, f)
 
+  /** This is impossible to define in a safe manner. Bringing the `M` to the top
+    * of the fixed point necessarily traverses the entire (potentially-infinite)
+    * structure. If you are reaching for this (or anything defined in terms of
+    * it), you probably want to look at a streaming library instead. Or, even
+    * better, look for alternative total approaches.
+    */
+  def anaM[M[_]: Monad, A]
+    (a: A)
+    (f: CoalgebraM[M, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
+      : M[T] =
+    hyloM[M, Base, A, T](a)(T.embed(_).pure[M], f)
+
+  /** @see [[anaM]]. */
+  def ganaM[N[_]: Monad: Traverse, M[_]: Monad, A](
+    a: A)(
+    k: DistributiveLaw[N, Base], f: GCoalgebraM[N, M, Base, A])(
+    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
+      M[T] =
+    anaM[M, N[A]](a.pure[N])(_.traverse(f).map(k(_).map(_.flatten)))
+
+  /** @see [[anaM]]. */
+  def apoM[M[_]: Monad, A](
+    a: A)(
+    f: GCoalgebraM[Either[T, ?], M, Base, A])(
+    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
+      M[T] =
+    ganaM[Either[T, ?], M, A](a)(distApo, f)
+
+  /** @see [[anaM]]. */
   def futuM[M[_]: Monad, A](a: A)(f: GCoalgebraM[Free[Base, ?], M, Base, A])(
     implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
       M[T] =

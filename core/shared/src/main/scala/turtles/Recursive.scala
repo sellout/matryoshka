@@ -81,12 +81,12 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     elgotCata[(T, ?), A](t)(distPara, φ)
 
-  def gpara[W[_]: Comonad, A]
+  def paraT[W[_]: Comonad, A]
     (t: T)
     (e: DistributiveLaw[Base, W], φ: GAlgebra[EnvT[T, W, ?], Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : A =
-    gzygo[W, A, T](t)(T.embed, e, φ)
+    zygoT[W, A, T](t)(T.embed, e, φ)
 
   def paraM[M[_]: Monad, A]
     (t: T)
@@ -126,7 +126,7 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     elgotCataM[(B, ?), M, A](t)(distZygoM(φʹ, distApplicative[Base, M]), φ)
 
-  def gzygo[W[_]: Comonad, A, B]
+  def zygoT[W[_]: Comonad, A, B]
     (t: T)
     (φʹ: Algebra[Base, B],
       w: DistributiveLaw[Base, W],
@@ -165,13 +165,6 @@ trait Recursive[T] extends Based[T] { self =>
     (implicit BF: Functor[Base])
       : A =
     elgotCata[Cofree[Base, ?], A](t)(distHisto, φ)
-
-  def ghisto[H[_]: Functor, A](
-    t: T)(
-    g: DistributiveLaw[Base, H], φ: GAlgebra[Cofree[H, ?], Base, A])
-    (implicit BF: Functor[Base]):
-      A =
-    gcata[Cofree[H, ?], A](t)(distGHisto(g), φ)
 
   def prepro[A]
     (t: T)
@@ -498,11 +491,11 @@ object Recursive {
       (implicit T: Steppable.Aux[T, F], BF: Functor[F])
         : A =
       typeClassInstance.elgotPara[A](self)(f)
-    def gpara[W[_]: Comonad, A]
+    def paraT[W[_]: Comonad, A]
       (e: DistributiveLaw[F, W], f: GAlgebra[EnvT[T, W, ?], F, A])
       (implicit T: Steppable.Aux[T, F], BF: Functor[F])
         : A =
-      typeClassInstance.gpara[W, A](self)(e, f)
+      typeClassInstance.paraT[W, A](self)(e, f)
     def paraM[M[_]: Monad, A]
       (f: GAlgebraM[(T, ?), M, F, A])
       (implicit T: Steppable.Aux[T, F], BT: Traverse[F])
@@ -528,13 +521,13 @@ object Recursive {
       (implicit BT: Traverse[F])
         : M[A] =
       typeClassInstance.elgotZygoM[A, B, M](self)(f, g)
-    def gzygo[W[_]: Comonad, A, B]
+    def zygoT[W[_]: Comonad, A, B]
       (f: Algebra[F, B],
         w: DistributiveLaw[F, W],
         g: GAlgebra[EnvT[B, W, ?], F, A])
       (implicit BF: Functor[F])
         : A =
-      typeClassInstance.gzygo[W, A, B](self)(f, w, g)
+      typeClassInstance.zygoT[W, A, B](self)(f, w, g)
     def gElgotZygo[W[_]: Comonad, A, B]
       (f: Algebra[F, B],
         w: DistributiveLaw[F, W],
@@ -557,11 +550,6 @@ object Recursive {
       (implicit BF: Functor[F])
         : A =
       typeClassInstance.elgotHisto(self)(f)
-    def ghisto[H[_]: Functor, A]
-      (g: DistributiveLaw[F, H], f: GAlgebra[Cofree[H, ?], F, A])
-      (implicit BF: Functor[F])
-        : A =
-      typeClassInstance.ghisto(self)(g, f)
     def prepro[A]
       (e: F ~> F, f: Algebra[F, A])
       (implicit T: Steppable.Aux[T, F], BF: Functor[F])
@@ -579,7 +567,7 @@ object Recursive {
       typeClassInstance.gcataZygo[W, A, B](self)(w, f, g)
     def paraZygo[A, B]
       (f: GAlgebra[(T, ?), F, B], g: GAlgebra[(B, ?), F, A])
-      (implicit T: Steppable.Aux[T, F], BF: Functor[F], BU: Alternative[F])
+      (implicit T: Steppable.Aux[T, F], BF: Functor[F])
         : A =
       typeClassInstance.paraZygo[A, B](self)(f, g)
     def paraMerga[A]
