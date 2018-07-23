@@ -442,11 +442,11 @@ package object turtles {
       def apply[A](fga: F[G[A]]) = fga.sequence
     }
 
-  /** A general [[DistributiveLaw]] for the case where the [[Comonad]] is
-    * also [[Distributive]].
-    *
-    * @group dist
-    */
+  // /** A general [[DistributiveLaw]] for the case where the [[cats.Comonad]] is
+  //   * also [[cats.Distributive]].
+  //   *
+  //   * @group dist
+  //   */
   // def distDistributive[F[_]: Functor, G[_]: Distributive] =
   //   new DistributiveLaw[F, G] {
   //     def apply[A](fga: F[G[A]]) = fga.cosequence

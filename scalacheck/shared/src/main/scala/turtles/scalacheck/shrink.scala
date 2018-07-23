@@ -27,7 +27,7 @@ trait ShrinkInstances extends ShrinkInstancesʹ {
       : Shrink[T] =
     Shrink(_.project.toList.toStream)
 
-  /** An instance for [[turtles.Birecursive]] types where the [[Base]] has a
+  /** An instance for [[turtles.Steppable]] types where the [[Base]] has a
     * [[scalacheck.Shrink]] instance.
     */
   def shrinkShrink[T, F[_]: Functor]
@@ -35,21 +35,24 @@ trait ShrinkInstances extends ShrinkInstancesʹ {
       : Shrink[T] =
     Shrink(t => F.shrink(t.project).map(_.embed))
 
-  /** An instance for [[turtles.Birecursive]] types where the [[Base]] has
-    * both [[scalaz.Foldable]] and [[scalacheck.Shrink]] instances.
+  /** An instance for [[turtles.Steppable]] types where the [[Base]] has
+    * both [[cats.Foldable]] and [[scalacheck.Shrink]] instances.
     */
   def shrinkFoldableShrink[T, F[_]: Functor: Foldable]
     (implicit T: Steppable.Aux[T, F], F: Shrink[F[T]])
       : Shrink[T] =
     Shrink(t => shrinkShrink[T, F].shrink(t) |+| foldableShrink[T, F].shrink(t))
 
-  implicit def fixShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Fix[F]] =
+  implicit def fixShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]])
+      : Shrink[Fix[F]] =
     shrinkFoldableShrink[Fix[F], F]
 
-  implicit def muShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Mu[F]] =
+  implicit def muShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]])
+      : Shrink[Mu[F]] =
     shrinkFoldableShrink[Mu[F], F]
 
-  implicit def nuShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]]): Shrink[Nu[F]] =
+  implicit def nuShrink[F[_]: Functor: Foldable](implicit F: Shrink[F[Nu[F]]])
+      : Shrink[Nu[F]] =
     shrinkFoldableShrink[Nu[F], F]
 }
 

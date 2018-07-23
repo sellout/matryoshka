@@ -23,176 +23,189 @@ trait Recursive[T] extends Based[T] { self =>
 
   implicit val rec: Recursive.Aux[T, Base] = self
 
-  def cata[A](t: T)(f: Algebra[Base, A]): A
+  /** The fundamental operation on all finite data types. It can be seen as a
+    * generalization of `Foldable.foldRight` (or rather, `Foldable.foldRight`
+    * is a specialization of this to [[scala.List]]).
+    */
+  def cata[A](t: T)(φ: Algebra[Base, A]): A
 
   /** A Kleisli catamorphism. */
-  def cataM[M[_]: Monad, A](t: T)(f: AlgebraM[M, Base, A])(implicit BT: Traverse[Base]):
-      M[A] =
-    cata[M[A]](t)(_.sequence >>= f)
+  def cataM[M[_]: Monad, A]
+    (t: T)
+    (φ: AlgebraM[M, Base, A])
+    (implicit BT: Traverse[Base])
+      : M[A] =
+    cata[M[A]](t)(_.sequence >>= φ)
 
   /** A catamorphism generalized with a comonad inside the functor. */
   def gcata[W[_]: Comonad, A]
     (t: T)
-    (k: DistributiveLaw[Base, W], g: GAlgebra[W, Base, A])
+    (k: DistributiveLaw[Base, W], φ: GAlgebra[W, Base, A])
     (implicit BF: Functor[Base])
       : A =
-    cata[W[A]](t)(fwa => k(fwa.map(_.coflatten)).map(g)).extract
+    cata[W[A]](t)(fwa => k(fwa.map(_.coflatten)).map(φ)).extract
 
   def gcataM[W[_]: Comonad: Traverse, M[_]: Monad, A]
     (t: T)
-    (w: DistributiveLaw[Base, W], g: GAlgebraM[W, M, Base, A])
+    (w: DistributiveLaw[Base, W], φ: GAlgebraM[W, M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
-    cataM[M, W[A]](t)(fwa => w(fwa.map(_.coflatten)).traverse(g)).map(_.extract)
+    cataM[M, W[A]](t)(fwa => w(fwa.map(_.coflatten)).traverse(φ)).map(_.extract)
 
   /** A catamorphism generalized with a comonad outside the functor. */
   def elgotCata[W[_]: Comonad, A](
     t: T)(
-    k: DistributiveLaw[Base, W], g: ElgotAlgebra[W, Base, A])
+    k: DistributiveLaw[Base, W], φ: ElgotAlgebra[W, Base, A])
     (implicit BF: Functor[Base])
       : A =
-    g(cata[W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatMap(g)))))
+    φ(cata[W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatMap(φ)))))
 
   def elgotCataM[W[_]: Comonad : Traverse, M[_]: Monad, A]
     (t: T)
-    (k: DistributiveLaw[Base, (M ∘ W)#λ], g: ElgotAlgebraM[W, M, Base, A])
+    (k: DistributiveLaw[Base, (M ∘ W)#λ], φ: ElgotAlgebraM[W, M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
-    cataM[M, W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatten.traverse(g)))) >>= g
+    cataM[M, W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatten.traverse(φ)))) >>= φ
 
   def para[A]
     (t: T)
-    (f: GAlgebra[(T, ?), Base, A])
+    (φ: GAlgebra[(T, ?), Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : A =
-    gcata[(T, ?), A](t)(distPara, f)
+    gcata[(T, ?), A](t)(distPara, φ)
 
   def elgotPara[A]
     (t: T)
-    (f: ElgotAlgebra[(T, ?), Base, A])
+    (φ: ElgotAlgebra[(T, ?), Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : A =
-    elgotCata[(T, ?), A](t)(distPara, f)
+    elgotCata[(T, ?), A](t)(distPara, φ)
 
-  def gpara[W[_]: Comonad, A](
-    t: T)(
-    e: DistributiveLaw[Base, W], f: GAlgebra[EnvT[T, W, ?], Base, A])(
-    implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
-      A =
-    gzygo[W, A, T](t)(T.embed, e, f)
+  def gpara[W[_]: Comonad, A]
+    (t: T)
+    (e: DistributiveLaw[Base, W], φ: GAlgebra[EnvT[T, W, ?], Base, A])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : A =
+    gzygo[W, A, T](t)(T.embed, e, φ)
 
-  def paraM[M[_]: Monad, A](
-    t: T)(
-    f: GAlgebraM[(T, ?), M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[A] =
-    para[M[A]](t)(_.map(_.sequence).sequence >>= f)
+  def paraM[M[_]: Monad, A]
+    (t: T)
+    (φ: GAlgebraM[(T, ?), M, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
+      : M[A] =
+    para[M[A]](t)(_.map(_.sequence).sequence >>= φ)
 
   def zygo[A, B]
     (t: T)
-    (f: Algebra[Base, B], g: GAlgebra[(B, ?), Base, A])
+    (f: Algebra[Base, B], φ: GAlgebra[(B, ?), Base, A])
     (implicit BF: Functor[Base])
       : A =
-    gcata[(B, ?), A](t)(distZygo(f), g)
+    gcata[(B, ?), A](t)(distZygo(f), φ)
 
   def zygoM[A, B, M[_]: Monad]
     (t: T)
-    (f: AlgebraM[M, Base, B], g: GAlgebraM[(B, ?), M, Base, A])
+    (φʹ: AlgebraM[M, Base, B], φ: GAlgebraM[(B, ?), M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
     gcataM[(M[B], ?), M, A](
       t)(
-      distZygo(_.sequence >>= f),
-        _.traverse(_.swap.sequence.map(_.swap)) >>= g)
+      distZygo(_.sequence >>= φʹ),
+        _.traverse(_.swap.sequence.map(_.swap)) >>= φ)
 
   def elgotZygo[A, B]
     (t: T)
-    (f: Algebra[Base, B], g: ElgotAlgebra[(B, ?), Base, A])
+    (φʹ: Algebra[Base, B], φ: ElgotAlgebra[(B, ?), Base, A])
     (implicit BF: Functor[Base])
       : A =
-    elgotCata[(B, ?), A](t)(distZygo(f), g)
+    elgotCata[(B, ?), A](t)(distZygo(φʹ), φ)
 
   def elgotZygoM[A, B, M[_]: Monad]
     (t: T)
-    (f: AlgebraM[M, Base, B], g: ElgotAlgebraM[(B, ?), M, Base, A])
+    (φʹ: AlgebraM[M, Base, B], φ: ElgotAlgebraM[(B, ?), M, Base, A])
     (implicit BT: Traverse[Base])
       : M[A] =
-    elgotCataM[(B, ?), M, A](t)(distZygoM(f, distApplicative[Base, M]), g)
+    elgotCataM[(B, ?), M, A](t)(distZygoM(φʹ, distApplicative[Base, M]), φ)
 
-  def gzygo[W[_]: Comonad, A, B](
-    t: T)(
-    f: Algebra[Base, B], w: DistributiveLaw[Base, W], g: GAlgebra[EnvT[B, W, ?], Base, A])
-    (implicit BF: Functor[Base]):
-      A =
-    gcata[EnvT[B, W, ?], A](t)(distZygoT(f, w), g)
+  def gzygo[W[_]: Comonad, A, B]
+    (t: T)
+    (φʹ: Algebra[Base, B],
+      w: DistributiveLaw[Base, W],
+      φ: GAlgebra[EnvT[B, W, ?], Base, A])
+    (implicit BF: Functor[Base])
+      : A =
+    gcata[EnvT[B, W, ?], A](t)(distZygoT(φʹ, w), φ)
 
-  def gElgotZygo[W[_]: Comonad, A, B](
-    t: T)(
-    f: Algebra[Base, B], w: DistributiveLaw[Base, W], g: ElgotAlgebra[EnvT[B, W, ?], Base, A])
-    (implicit BF: Functor[Base]):
-      A =
-    elgotCata[EnvT[B, W, ?], A](t)(distZygoT(f, w), g)
+  def gElgotZygo[W[_]: Comonad, A, B]
+    (t: T)
+    (φʹ: Algebra[Base, B],
+      w: DistributiveLaw[Base, W],
+      φ: ElgotAlgebra[EnvT[B, W, ?], Base, A])
+    (implicit BF: Functor[Base])
+      : A =
+    elgotCata[EnvT[B, W, ?], A](t)(distZygoT(φʹ, w), φ)
 
   /** Mutually-recursive fold. */
   def mutu[A, B]
     (t: T)
-    (f: GAlgebra[(A, ?), Base, B], g: GAlgebra[(B, ?), Base, A])
+    (φʹ: GAlgebra[(A, ?), Base, B], φ: GAlgebra[(B, ?), Base, A])
     (implicit BF: Functor[Base])
       : A =
-    cata(t)(f <<< BF.lift((_: (B, A)).swap) &&& g)._2
+    cata(t)(φʹ <<< BF.lift((_: (B, A)).swap) &&& φ)._2
 
   def histo[A]
     (t: T)
-    (f: GAlgebra[Cofree[Base, ?], Base, A])
+    (φ: GAlgebra[Cofree[Base, ?], Base, A])
     (implicit BF: Functor[Base])
       : A =
-    gcata[Cofree[Base, ?], A](t)(distHisto, f)
+    gcata[Cofree[Base, ?], A](t)(distHisto, φ)
 
   def elgotHisto[A]
     (t: T)
-    (f: ElgotAlgebra[Cofree[Base, ?], Base, A])
+    (φ: ElgotAlgebra[Cofree[Base, ?], Base, A])
     (implicit BF: Functor[Base])
       : A =
-    elgotCata[Cofree[Base, ?], A](t)(distHisto, f)
+    elgotCata[Cofree[Base, ?], A](t)(distHisto, φ)
 
   def ghisto[H[_]: Functor, A](
     t: T)(
-    g: DistributiveLaw[Base, H], f: GAlgebra[Cofree[H, ?], Base, A])
+    g: DistributiveLaw[Base, H], φ: GAlgebra[Cofree[H, ?], Base, A])
     (implicit BF: Functor[Base]):
       A =
-    gcata[Cofree[H, ?], A](t)(distGHisto(g), f)
+    gcata[Cofree[H, ?], A](t)(distGHisto(g), φ)
 
   def prepro[A]
     (t: T)
-    (e: Base ~> Base, f: Algebra[Base, A])
+    (e: Base ~> Base, φ: Algebra[Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : A =
-    gprepro[Id, A](t)(distCata, e, f)
+    gprepro[Id, A](t)(distCata, e, φ)
 
   def gprepro[W[_]: Comonad, A](
     t: T)(
-    k: DistributiveLaw[Base, W], e: Base ~> Base, f: GAlgebra[W, Base, A])(
+    k: DistributiveLaw[Base, W], e: Base ~> Base, φ: GAlgebra[W, Base, A])(
     implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
       A =
     ghylo[W, Id, Base, T, A](
       t)(
-      k, distAna, f, T.project(_).map(cata[T](_)(e(_).embed)))
+      k, distAna, φ, T.project(_).map(cata[T](_)(e(_).embed)))
 
   def gcataZygo[W[_]: Comonad, A, B]
     (t: T)
-    (k: DistributiveLaw[Base, W], f: GAlgebra[W, Base, B], g: GAlgebra[(B, ?), Base, A])
-    (implicit BF: Functor[Base], BU: Alternative[Base]) =
+    (k: DistributiveLaw[Base, W],
+      φʹ: GAlgebra[W, Base, B],
+      φ: GAlgebra[(B, ?), Base, A])
+    (implicit BF: Functor[Base], BU: Alternative[Base])
+      : A =
     gcata[(W[B], ?), A](
       t)(
-      distZygo(fwa => k(fwa.map(_.coflatten)).map(f)),
-        fwa => g(fwa.map(_.leftMap(_.extract))))
+      distZygo(fwa => k(fwa.map(_.coflatten)).map(φʹ)),
+        fwa => φ(fwa.map(_.leftMap(_.extract))))
 
-  def paraZygo[A, B](
-    t: T)(
-    f: GAlgebra[(T, ?), Base, B],
-    g: GAlgebra[(B, ?), Base, A])(
-    implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
-      A = {
+  def paraZygo[A, B]
+    (t: T)
+    (φʹ: GAlgebra[(T, ?), Base, B], φ: GAlgebra[(B, ?), Base, A])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : A = {
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def h(t: T): (B, A) = {
       val tmp = T.project(t).map { x =>
@@ -200,34 +213,33 @@ trait Recursive[T] extends Based[T] { self =>
         ((x, b), (b, a))
       }
 
-      (tmp.map(_._1), tmp.map(_._2)).bimap(f, g)
+      (tmp.map(_._1), tmp.map(_._2)).bimap(φʹ, φ)
     }
 
     h(t)._2
   }
 
-  // // FIXME: This should be an override, but it adds an extra implicit.
-  // @SuppressWarnings(Array("org.wartremover.warts.Overloading"))
+  // FIXME: This version adds an extra implicit.
   // def paraZygo[A, B]
   //   (t: T)
-  //   (f: GAlgebra[(T, ?), Base, B], g: GAlgebra[(B, ?), Base, A])
+  //   (φʹ: GAlgebra[(T, ?), Base, B], φ: GAlgebra[(B, ?), Base, A])
   //   (implicit
   //     T: Steppable.Aux[T, Base],
   //     BF: Functor[Base],
   //     BU: Alternative[Base]) =
-  //   gcataZygo[(T, ?), A, B](t)(distPara, f, g)
+  //   gcataZygo[(T, ?), A, B](t)(distPara, φʹ, φ)
 
   /** Combines two functors that may fail to merge, also providing access to the
     * inputs at each level. This is akin to an Elgot, not generalized, fold.
     */
   def paraMerga[A]
     (t: T, that: T)
-    (f: (T, T, Option[Base[A]]) => A)
+    (φ: (T, T, Option[Base[A]]) => A)
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base], BM: Merge[Base])
       : A =
     hylo[λ[α => OptionT[(T, T, ?), Base[α]]], (T, T), A](
       (t, that))(
-      fa => f.tupled(fa.value),
+      fa => φ.tupled(fa.value),
         { case (a, b) => OptionT((a, b, T.project(a).merge(T.project(b)))) })(
       Functor[OptionT[(T, T, ?), ?]] compose BF)
 
@@ -336,7 +348,7 @@ trait Recursive[T] extends Based[T] { self =>
     loop(Monoid[Z].empty, t)
   }
 
-  /** Converts from this type to any `Steppable` type. I.e., you can
+  /** Converts from this type to any [Steppable] type. I.e., you can
     * “expand” and least fixed point to another fixed point.
     *
     * This is normally unnecessary, unless some function you are passing
@@ -567,7 +579,7 @@ object Recursive {
       typeClassInstance.gcataZygo[W, A, B](self)(w, f, g)
     def paraZygo[A, B]
       (f: GAlgebra[(T, ?), F, B], g: GAlgebra[(B, ?), F, A])
-      (implicit T: Steppable.Aux[T, F], BF: Functor[F])
+      (implicit T: Steppable.Aux[T, F], BF: Functor[F], BU: Alternative[F])
         : A =
       typeClassInstance.paraZygo[A, B](self)(f, g)
     def paraMerga[A]
