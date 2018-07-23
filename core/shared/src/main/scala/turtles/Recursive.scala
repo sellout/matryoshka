@@ -37,7 +37,9 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     cata[M[A]](t)(_.sequence >>= φ)
 
-  /** A catamorphism generalized with a comonad inside the functor. */
+  /** A generalization of [[cata]] that allows the carrier to be modified by an
+    * arbitrary [[cats.Comonad]], so long as it distributes over [[Base]].
+    */
   def gcata[W[_]: Comonad, A]
     (t: T)
     (k: DistributiveLaw[Base, W], φ: GAlgebra[W, Base, A])
@@ -52,7 +54,7 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     cataM[M, W[A]](t)(fwa => w(fwa.map(_.coflatten)).traverse(φ)).map(_.extract)
 
-  /** A catamorphism generalized with a comonad outside the functor. */
+  /** @see [[gcata]]. */
   def elgotCata[W[_]: Comonad, A](
     t: T)(
     k: DistributiveLaw[Base, W], φ: ElgotAlgebra[W, Base, A])
@@ -67,6 +69,9 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     cataM[M, W[Base[A]]](t)(fwfa => k(fwfa.map(_.coflatten.traverse(φ)))) >>= φ
 
+  /** A fold that carries the original branch structure along with it at each
+    * step.
+    */
   def para[A]
     (t: T)
     (φ: GAlgebra[(T, ?), Base, A])
@@ -74,6 +79,7 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     gcata[(T, ?), A](t)(distPara, φ)
 
+  /** @see [[para]]. */
   def elgotPara[A]
     (t: T)
     (φ: ElgotAlgebra[(T, ?), Base, A])
@@ -81,6 +87,7 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     elgotCata[(T, ?), A](t)(distPara, φ)
 
+  /** @see [[para]]. */
   def paraT[W[_]: Comonad, A]
     (t: T)
     (e: DistributiveLaw[Base, W], φ: GAlgebra[EnvT[T, W, ?], Base, A])
@@ -95,6 +102,10 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     para[M[A]](t)(_.map(_.sequence).sequence >>= φ)
 
+  /** A fold akin to [[para]], but that applies an additional fold to the
+    * structure as well, so that additional context can be provided while
+    * keeping the algebras decomposed.
+    */
   def zygo[A, B]
     (t: T)
     (f: Algebra[Base, B], φ: GAlgebra[(B, ?), Base, A])
@@ -112,6 +123,7 @@ trait Recursive[T] extends Based[T] { self =>
       distZygo(_.sequence >>= φʹ),
         _.traverse(_.swap.sequence.map(_.swap)) >>= φ)
 
+  /** @see [[zygo]]. */
   def elgotZygo[A, B]
     (t: T)
     (φʹ: Algebra[Base, B], φ: ElgotAlgebra[(B, ?), Base, A])
@@ -126,6 +138,7 @@ trait Recursive[T] extends Based[T] { self =>
       : M[A] =
     elgotCataM[(B, ?), M, A](t)(distZygoM(φʹ, distApplicative[Base, M]), φ)
 
+  /** @see [[zygo]]. */
   def zygoT[W[_]: Comonad, A, B]
     (t: T)
     (φʹ: Algebra[Base, B],
@@ -135,7 +148,8 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     gcata[EnvT[B, W, ?], A](t)(distZygoT(φʹ, w), φ)
 
-  def gElgotZygo[W[_]: Comonad, A, B]
+  /** @see [[zygo]]. */
+  def elgotZygoT[W[_]: Comonad, A, B]
     (t: T)
     (φʹ: Algebra[Base, B],
       w: DistributiveLaw[Base, W],
@@ -144,7 +158,13 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     elgotCata[EnvT[B, W, ?], A](t)(distZygoT(φʹ, w), φ)
 
-  /** Mutually-recursive fold. */
+  /** A mutually-recursive fold, where each algebra can see the result of
+    * applying the other. This is a generalization of [[zygo]] where the
+    * information passes in both directions.
+    *
+    * NB: This can’t be implemented within the framework of generalized
+    *     comonadic folds, but it _is_ still implemented in terms of [[cata]].
+    */
   def mutu[A, B]
     (t: T)
     (φʹ: GAlgebra[(A, ?), Base, B], φ: GAlgebra[(B, ?), Base, A])
@@ -152,6 +172,9 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     cata(t)(φʹ <<< BF.lift((_: (B, A)).swap) &&& φ)._2
 
+  /** A fold that carries with it all of the sub-results collected along the
+    * traversal.
+    */
   def histo[A]
     (t: T)
     (φ: GAlgebra[Cofree[Base, ?], Base, A])
@@ -159,6 +182,7 @@ trait Recursive[T] extends Based[T] { self =>
       : A =
     gcata[Cofree[Base, ?], A](t)(distHisto, φ)
 
+  /** @see [[histo]]. */
   def elgotHisto[A]
     (t: T)
     (φ: ElgotAlgebra[Cofree[Base, ?], Base, A])
@@ -528,13 +552,13 @@ object Recursive {
       (implicit BF: Functor[F])
         : A =
       typeClassInstance.zygoT[W, A, B](self)(f, w, g)
-    def gElgotZygo[W[_]: Comonad, A, B]
+    def elgotZygoT[W[_]: Comonad, A, B]
       (f: Algebra[F, B],
         w: DistributiveLaw[F, W],
         g: ElgotAlgebra[EnvT[B, W, ?], F, A])
       (implicit BF: Functor[F])
         : A =
-      typeClassInstance.gElgotZygo [W, A, B](self)(f, w, g)
+      typeClassInstance.elgotZygoT[W, A, B](self)(f, w, g)
     def mutu[A, B]
       (f: GAlgebra[(A, ?), F, B], g: GAlgebra[(B, ?), F, A])
       (implicit T: Steppable.Aux[T, F], BF: Functor[F])

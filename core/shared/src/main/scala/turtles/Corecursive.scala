@@ -18,40 +18,48 @@ trait Corecursive[T] extends Based[T] { self =>
   implicit val corec: Corecursive.Aux[T, Base] = self
 
   /** The fundamental operation on all potentially infinite data types. */
-  def ana[A](a: A)(f: Coalgebra[Base, A]): T
+  def ana[A](a: A)(ψ: Coalgebra[Base, A]): T
 
+  /** A generalization of [[ana]] that allows an arbitrary [[cats.Monad]] to
+    * modify the carrier, so long as [[Base]] can be distributed over it.
+    */
   def gana[N[_]: Monad, A]
     (a: A)
-    (k: DistributiveLaw[N, Base], f: GCoalgebra[N, Base, A])
+    (k: DistributiveLaw[N, Base], ψ: GCoalgebra[N, Base, A])
     (implicit BF: Functor[Base])
       : T =
-    ana[N[A]](a.pure[N])(na => k(na.map(f)).map(_.flatten))
+    ana[N[A]](a.pure[N])(na => k(na.map(ψ)).map(_.flatten))
 
-  def elgotAna[N[_]: Monad, A](
-    a: A)(
-    k: DistributiveLaw[N, Base], ψ: ElgotCoalgebra[N, Base, A])(
-    implicit BF: Functor[Base])
+  /** @see [[gana]]. */
+  def elgotAna[N[_]: Monad, A]
+    (a: A)
+    (k: DistributiveLaw[N, Base], ψ: ElgotCoalgebra[N, Base, A])
+    (implicit BF: Functor[Base])
       : T =
     ana(ψ(a))(k(_).map(_ >>= ψ))
 
-  /** An unfold that can short-circuit certain sections.
+  /** An unfold that can “short-circuit” certain sections by choosing to return
+    * a complete branch (using [[scala.Left]]) instead of single step (using
+    * [[scala.Right]]).
     */
   def apo[A]
     (a: A)
-    (f: GCoalgebra[Either[T, ?], Base, A])
+    (ψ: GCoalgebra[Either[T, ?], Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : T =
-    gana[Either[T, ?], A](a)(distApo, f)
+    gana[Either[T, ?], A](a)(distApo, ψ)
 
+  /** @see [[apo]]. */
   def elgotApo[A]
     (a: A)
-    (f: ElgotCoalgebra[Either[T, ?], Base, A])
+    (ψ: ElgotCoalgebra[Either[T, ?], Base, A])
     (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
       : T =
-    elgotAna[Either[T, ?], A](a)(distApo, f)
+    elgotAna[Either[T, ?], A](a)(distApo, ψ)
 
-  /** An unfold that can handle sections with a secondary unfold.
-    */
+  /** An unfold that can handle sections with a secondary unfold. This is a
+    * generalization of [[apo]] that allows applying a different unfold when
+    * [[scala.Left]] is used. */
   def gapo[A, B]
     (a: A)
     (ψʹ: Coalgebra[Base, B], ψ: GCoalgebra[Either[B, ?], Base, A])
@@ -59,6 +67,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     gana[Either[B, ?], A](a)(distGApo(ψʹ), ψ)
 
+  /** @see [[gapo]]. */
   def gapoT[M[_]: Monad, A, B]
     (a: A)
     (ψʹ: Coalgebra[Base, B],
@@ -68,25 +77,32 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     gana[EitherT[M, B, ?], A](a)(distGApoT(ψʹ, k), ψ)
 
+  /** An unfold that can emit multiple steps at a time.
+    *
+    * NB: If your only cases are returning either a single step or a complete
+    *     branch, @see [[apo]] instead.
+    */
   def futu[A]
     (a: A)
-    (f: GCoalgebra[Free[Base, ?], Base, A])
+    (ψ: GCoalgebra[Free[Base, ?], Base, A])
     (implicit BF: Functor[Base])
       : T =
-    gana[Free[Base, ?], A](a)(distFutu, f)
+    gana[Free[Base, ?], A](a)(distFutu, ψ)
 
+  /** @see [[futu]]. */
   def futuT[H[_]: Monad, A](a: A)
     (k: DistributiveLaw[H, Base], ψ: GCoalgebra[FreeT[Base, H, ?], Base, A])
     (implicit BF: Functor[Base])
       : T =
     gana[FreeT[Base, H, ?], A](a)(distFutuT(k), ψ)
 
+  /** @see [[futu]]. */
   def elgotFutu[A]
     (a: A)
-    (f: ElgotCoalgebra[Free[Base, ?], Base, A])
+    (ψ: ElgotCoalgebra[Free[Base, ?], Base, A])
     (implicit BF: Functor[Base])
       : T =
-    elgotAna[Free[Base, ?], A](a)(distFutu, f)
+    elgotAna[Free[Base, ?], A](a)(distFutu, ψ)
 
   /** This is impossible to define in a safe manner. Bringing the `M` to the top
     * of the fixed point necessarily traverses the entire (potentially-infinite)
@@ -96,45 +112,47 @@ trait Corecursive[T] extends Based[T] { self =>
     */
   def anaM[M[_]: Monad, A]
     (a: A)
-    (f: CoalgebraM[M, Base, A])
+    (ψ: CoalgebraM[M, Base, A])
     (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
       : M[T] =
-    hyloM[M, Base, A, T](a)(T.embed(_).pure[M], f)
+    hyloM[M, Base, A, T](a)(T.embed(_).pure[M], ψ)
 
   /** @see [[anaM]]. */
-  def ganaM[N[_]: Monad: Traverse, M[_]: Monad, A](
-    a: A)(
-    k: DistributiveLaw[N, Base], f: GCoalgebraM[N, M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[T] =
-    anaM[M, N[A]](a.pure[N])(_.traverse(f).map(k(_).map(_.flatten)))
+  def ganaM[N[_]: Monad: Traverse, M[_]: Monad, A]
+    (a: A)
+    (k: DistributiveLaw[N, Base], ψ: GCoalgebraM[N, M, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
+      : M[T] =
+    anaM[M, N[A]](a.pure[N])(_.traverse(ψ).map(k(_).map(_.flatten)))
 
   /** @see [[anaM]]. */
-  def apoM[M[_]: Monad, A](
-    a: A)(
-    f: GCoalgebraM[Either[T, ?], M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[T] =
-    ganaM[Either[T, ?], M, A](a)(distApo, f)
+  def apoM[M[_]: Monad, A]
+    (a: A)
+    (ψ: GCoalgebraM[Either[T, ?], M, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
+      : M[T] =
+    ganaM[Either[T, ?], M, A](a)(distApo, ψ)
 
   /** @see [[anaM]]. */
-  def futuM[M[_]: Monad, A](a: A)(f: GCoalgebraM[Free[Base, ?], M, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BT: Traverse[Base]):
-      M[T] =
-    ganaM[Free[Base, ?], M, A](a)(distFutu, f)
+  def futuM[M[_]: Monad, A]
+    (a: A)
+    (ψ: GCoalgebraM[Free[Base, ?], M, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BT: Traverse[Base])
+      : M[T] =
+    ganaM[Free[Base, ?], M, A](a)(distFutu, ψ)
 
-  def postpro[A](
-    a: A)(
-    e: Base ~> Base, g: Coalgebra[Base, A])(
-    implicit T: Steppable.Aux[T, Base], BF: Functor[Base]):
-      T =
-    gpostpro[Id, A](a)(distAna, e, g)
+  def postpro[A]
+    (a: A)
+    (e: Base ~> Base, ψ: Coalgebra[Base, A])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base])
+      : T =
+    gpostpro[Id, A](a)(distAna, e, ψ)
 
-  def gpostpro[N[_], A](
-    a: A)(
-    k: DistributiveLaw[N, Base], e: Base ~> Base, ψ: GCoalgebra[N, Base, A])(
-    implicit T: Steppable.Aux[T, Base], BF: Functor[Base], N: Monad[N]):
-      T =
+  def gpostpro[N[_], A]
+    (a: A)
+    (k: DistributiveLaw[N, Base], e: Base ~> Base, ψ: GCoalgebra[N, Base, A])
+    (implicit T: Steppable.Aux[T, Base], BF: Functor[Base], N: Monad[N])
+      : T =
     ghylo[Id, N, Base, A, T](
       a)(
       distCata,
@@ -151,6 +169,7 @@ trait Corecursive[T] extends Based[T] { self =>
   def convertFrom[R](r: R)(implicit R: Steppable.Aux[R, Base]): T =
     ana[R](r)(R.project)
 
+  /** @see [[ana]]. */
   def transAna[U, G[_]: Functor]
     (u: U)
     (f: G[U] => Base[U])
@@ -158,6 +177,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     ana(u)(f <<< (U.project(_)))
 
+  /** @see [[gana]]. */
   def transGana[M[_]: Monad, U, G[_]: Functor]
     (u: U)
     (k: DistributiveLaw[M, Base], f: CoalgebraicGTransform[M, U, G, Base])
@@ -165,6 +185,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     gana(u)(k, f <<< (U.project(_)))
 
+  /** @see [[apo]]. */
   def transApo[U, G[_]: Functor]
     (u: U)
     (f: CoalgebraicGTransform[Either[T, ?], U, G, Base])
@@ -175,6 +196,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     transGana(u)(distApo, f)
 
+  /** @see [[futu]]. */
   def transFutu[U, G[_]: Functor]
     (u: U)
     (f: CoalgebraicGTransform[Free[Base, ?], U, G, Base])
@@ -182,6 +204,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     transGana(u)(distFutu[Base], f)
 
+  /** @see [[anaM]]. */
   def transAnaM[M[_]: Monad, U, G[_]: Functor]
     (u: U)
     (f: TransformM[M, U, G, Base])
@@ -192,6 +215,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : M[T] =
     anaM(u)(f <<< (U.project(_)))
 
+  /** @see [[ana]]. */
   def transAnaT
     (t: T)
     (f: T => T)
@@ -199,9 +223,9 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     ana(t)(f >>> T.project)
 
-  /** This behaves like [[turtles.Corecursive.elgotApo]]`, but it’s harder to
-    * see from the types that in the disjunction, `Left` is the final result for
-    * this node, while `Right` means to keep processing the children.
+  /** This behaves like [[elgotApo]], but it’s harder to see from the types that
+    * in the disjunction, [[scala.Left]] is the final result for this node,
+    * while [[scala.Right]] means to keep processing the children.
     */
   def transApoT
     (t: T)
@@ -210,6 +234,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     elgotApo(t)(f(_).map(T.project))
 
+  /** @see [[anaM]]. */
   def transAnaTM[M[_]: Monad]
     (t: T)
     (f: T => M[T])
@@ -228,6 +253,7 @@ trait Corecursive[T] extends Based[T] { self =>
       : T =
     ana((a, t))(at => sequenceTuple(f.tupled(at).map(T.project)))
 
+  /** @see [[anaM]]. */
   def topDownCataM[M[_]: Monad, A](
     t: T, a: A)(
     f: (A, T) => M[(A, T)])(
