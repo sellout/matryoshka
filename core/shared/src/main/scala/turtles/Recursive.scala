@@ -24,8 +24,9 @@ trait Recursive[T] extends Based[T] { self =>
   implicit val rec: Recursive.Aux[T, Base] = self
 
   /** The fundamental operation on all finite data types. It can be seen as a
-    * generalization of `Foldable.foldRight` (or rather, `Foldable.foldRight`
-    * is a specialization of this to [[scala.List]]).
+    * generalization of [[cats.Foldable#foldRight]] (or rather,
+    * [[cats.Foldable#foldRight]] is a specialization of this to
+    * [[scala.List]]).
     */
   def cata[A](t: T)(φ: Algebra[Base, A]): A
 

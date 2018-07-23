@@ -143,31 +143,34 @@ The names of these operations are the same as those in `Recursive` and `Corecurs
 
 There is an additional (restricted) set of operations that also have a `T` suffix (e.g., `transCataT`). These only generalize in “the Elgot position” and require you to maintain the same functor. However, it can be the most natural way to write certain transformations, like `turtles.algebras.substitute`.
 
-### Generalization
+### Naming Conventions
 
-There are generalized forms of most recursion schemes. From the basic `cata` (and its dual, `ana`), we can generalize in a few ways. We name them using either a prefix or suffix, depending on how they’re generalized.
+There is a set of conventions around the naming of the operations. There are many variants of each operation (and they are all ultimately variants of `cata` and `ana`), so understanding this convention should help make it easier to understand the myriad possibilities rather than learning them by rote. The general pattern is
 
-#### G…
+> [`e`][`g`]`operation`[`T`][`M`]
 
-Most well known (in fact, even referred to as “generalized recursion schemes”) is generalizing over a `Comonad` (or `Monad`), converting an algebra like `F[A] => A` to `F[W[A]] => A`. Many of the other named folds are instances of this –
+#### `g`
 
-- when `W[A] = (T[F], A)`, it’s `para`,
-- when `W[A] = (B, A)`, it’s `zygo`, and
-- when `W[A] = Cofree[F, A]`, it’s `histo`.
+“Generalized” variant – This parameterizes the fold over some `DistributiveLaw` that generalizes the (co)algebra over some `Monad` or `Comonad`. This is normally only applied to the fundamental operations – `cata`, `ana`, and `hylo`, but there is also a `gapo` (dual to `zygo`) that really only coincidentally follows this naming pattern.
 
-These specializations can give rise to other generalizations. `zygoT` uses `EnvT[B, ?[_], A]` and `ghisto` uses `Cofree[?[_], A]`.
+Many of the other “well-known” named folds are specializations of this:
 
-#### …M
+- when specialized to `(T, ?)`, it’s `para`;
+- when `(B, ?)`, `zygo`;
+- when `Free[F, ?]`, `futu`;
+- etc.
 
-Less unique to recursion schemes, there are Kleisli variants that return the result in any monad.
+#### `e`
 
-#### Elgot…
+“Elgot” variant – Named after the form of coalgebra used in an “Elgot algebra”. If there is an operation that takes some `F[X[A]] => A`, the Elgot variant takes `X[F[A]] => A`, which often has similar but distinct properties from the original.
 
-This generalization, stolen from the “Elgot algebra”, is similar to standard generalization, except it uses `W[F[A]] => A` rather than `F[W[A]] => A`, with the `Comonad` outside the functor. Not all of the forms seem to be as useful as the `G` variants, but in some cases, like `elgotZygo`, it offers benefits of its own.
+#### `T`
 
-#### GElgot…M
+“Transformer” variant – For some fold that takes an algebra like `F[X[A] => A`, and where `T[_[_], _]` is the (monad or comonad) transformer of `x`, the transformer variant takes an algebra like `F[T[M, A]] => A`.
 
-Any of these generalizations can be combined, so you can have an algebra that is generalized along two or three dimensions. A fold like `cofPara` takes an algebra that’s generalized like `zygo` (`(B, ?)`) in the “Elgot” dimension and like `para` (`(T[F], ?)`) in the “G” dimension, which looks like `(B, F[(T[F], A)]) => A`. It’s honestly useful. I swear.
+#### `M`
+
+Kleisli (“monadic”) variant – This convention is much more widespread than simply recursion schemes. A fold that returns its result in a `Monad`, by applying a Kleisli algebra (i.e., `F[A] => M[A]` rather than `F[A] => A`. The dual of this might be something like `anaW` (taking a seed value in a `Comonad`), but those are uninteresting. Having Kleisli variants of unfolds is unsafe, as it can force traversal of an infinite structure. If you’re looking for an operation like that, you are better off with an effectful streaming library.
 
 ### Implementation
 
