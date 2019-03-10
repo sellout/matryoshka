@@ -1,3 +1,5 @@
+**This library has been deprecated in favor of [Droste](https://github.com/higherkindness/droste).**
+
 <img align="right" src="resources/turtles.png" height="200px" style="padding-left: 20px"/>
 
 # Turtles
